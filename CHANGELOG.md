@@ -4,8 +4,13 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-11
+
+`done` now reads several kinds of log that used to count as exit-code-only (echoed check commands, silent eslint and oxlint runs, Vite builds with only the `built in` line), `lint-pack` warns on two more wording traps, and two Windows defects are fixed. The new `done` readings are checked on invented suites and on replays of real logs; their wrong `met` rate on real use is not labelled yet. Echoed command lines, arguments included, can now be sent to Jev in exit-code-only runs ([privacy](docs/privacy.md)).
+
 ### Added
 
+- CI: a `windows` job (Node 24: typecheck and tests). It started as informational (`continue-on-error`) to list what breaks on Windows; after the fixes below it is green and enforced like the macOS and Ubuntu jobs. The README says the unit tests run on Windows and that the key step and a real Windows session are not tested. Record: [windows-ci-informational.md](docs/decisions/windows-ci-informational.md).
 - `scripts/usage-report.mjs` (maintainer tool, not shipped): the four usage measures from the local data directory as one JSON line of counts (edit turns that end with a counted check, re-asks after a non-clear `decide` that became clear, exit-code-only share of `missing` with evidence size, labels by verdict), with `--days`, `--since` and `--data-dir` and `--exclude-session <id|current>` (repeatable) to leave out the receipts and stops of your own development session. Record: [usage-report.md](docs/decisions/usage-report.md).
 
 ### Changed
@@ -19,11 +24,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - Circuit breaker on Windows: the failure count is written by temp file and rename, and Windows refuses a rename onto a file another process has open (a parallel session's stale scan reads every entry); the rename is now retried a few times with short waits, and the temp file is removed if it still fails. Found by the Windows CI job, where one of 16 parallel sessions lost its count.
 - Stop gate records on Windows: pruning of `stops.jsonl` (records older than 90 days, past 2 MB) never ran there, because Windows refuses to replace a file that this process still holds open. The descriptor is now closed before the replace on Windows, and the post-replace copy of lines another session appended in that instant is skipped there. The two tests of an append that lands on a file being renamed away run on POSIX only. The tests that build workers by absolute path now import them by file URL, the CLI path in the abort test comes from a file URL, and several tests no longer assume POSIX paths, a POSIX shell for their fixtures or a bare environment without `SystemRoot`.
-- Checkout class on Windows: a plain main checkout opened from a subfolder was read as `linked` when the temp or home path has an 8.3 short name (`RUNNER~1`), because the two git paths were compared without expanding short names. They are now resolved with the native real path. Found by the informational Windows CI job; the Windows run still has 16 failing product tests.
-
-### Added
-
-- CI: a `windows` job (Node 24: typecheck and tests). It started as informational (`continue-on-error`) to list what breaks on Windows; after the fixes below it is green and enforced like the macOS and Ubuntu jobs. The README says the unit tests run on Windows and that the key step and a real Windows session are not tested. Record: [windows-ci-informational.md](docs/decisions/windows-ci-informational.md).
+- Checkout class on Windows: a plain main checkout opened from a subfolder was read as `linked` when the temp or home path has an 8.3 short name (`RUNNER~1`), because the two git paths were compared without expanding short names. They are now resolved with the native real path. Found by the informational Windows CI job.
 
 ## [0.2.7] - 2026-10-09
 

@@ -1,6 +1,6 @@
 {
   "name": "claude-referee",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Unofficial CLI that checks \"done\" claims and small judgement calls with TypeSafe Jev, and keeps local receipts. The Claude Code plugin of the same name bundles it.",
   "license": "MIT",
   "author": "İsmail Daşcı <hello@ismaildasci.com> (https://github.com/ismaildasci)",

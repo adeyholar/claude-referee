@@ -25,5 +25,5 @@ test("help lists every command and --version prints the version", async () => {
   for (const command of commands) assert.match(help.out.join(""), new RegExp(`\\b${command.name}\\b`));
   const version = memoryIo();
   await run(["--version"], version, commands);
-  assert.equal(version.out.join("").trim(), "0.2.7");
+  assert.equal(version.out.join("").trim(), "0.2.8");
 });

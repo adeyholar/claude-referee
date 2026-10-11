@@ -1,6 +1,6 @@
 {
   "name": "claude-referee-workspace",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "private": true,
   "description": "Source, tests and build for the claude-referee Claude Code plugin.",
   "license": "MIT",

@@ -2,7 +2,7 @@
 // Prices: https://docs.typesafe.ai/models.md (input tokens only; output tokens are free).
 
 export const KIT = "claude-referee";
-export const VERSION = "0.2.7";
+export const VERSION = "0.2.8";
 export const DEFAULT_MODEL = "jev-1.13.0";
 export const MARKETPLACE = "claude-referee";
 export const DEFAULT_BASE_URL = "https://api.typesafe.ai";

@@ -1,7 +1,7 @@
 {
   "name": "claude-referee",
   "displayName": "claude-referee (unofficial)",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Checks \"done\" claims and small judgement calls with TypeSafe Jev, and keeps local receipts. Unofficial; not affiliated with Anthropic or TypeSafe.",
   "author": {
     "name": "İsmail Daşcı",
