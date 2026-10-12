@@ -1,4 +1,5 @@
 // Docs watcher: hashes TypeSafe's models.md, api.md, llms.txt and the Jev jaggedness page and compares them with docs-watch.json. Run weekly in CI, no key needed.
+// llms.txt also records its link paths, so a change names the added and removed pages (a snapshot without paths still compares by hash).
 // Exit 1 when a page changed or can't be fetched; --update records the current hashes. The SDK changelog versions only print ::notice:: lines and never fail.
 
 import { createHash } from "node:crypto";
@@ -14,7 +15,7 @@ export const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 
 export function facts(page, text) {
   if (page === "models.md") return { rate_limits: (text.match(/^.*Rate limits.*\|.*$/m) ?? [""])[0].trim(), models: [...new Set(text.match(/jev-[0-9][\w.]*/g) ?? [])].sort() };
-  if (page === "llms.txt") return { links: (text.match(/^- \[/gm) ?? []).length };
+  if (page === "llms.txt") return { links: (text.match(/^- \[/gm) ?? []).length, paths: [...text.matchAll(/^- \[[^\]]*\]\(([^)\s]+)\)/gm)].map((m) => m[1].replace(BASE, "")).sort() };
   if (page === "model-jaggedness/jev-1.13.md") return { reviewed: (text.match(/Last reviewed (\d{4}-\d{2}-\d{2})/) ?? [])[1] ?? null };
   return {};
 }
@@ -38,7 +39,16 @@ export function infoNotes(recorded, current) {
 export function compare(recorded, current) {
   const changed = [];
   for (const page of PAGES) {
-    if (recorded[page]?.sha256 !== current[page]?.sha256) changed.push({ page, was: recorded[page]?.facts ?? null, now: current[page]?.facts ?? null });
+    if (recorded[page]?.sha256 === current[page]?.sha256) continue;
+    const was = recorded[page]?.facts ?? null;
+    const now = current[page]?.facts ?? null;
+    if (!Array.isArray(was?.paths) || !Array.isArray(now?.paths)) {
+      changed.push({ page, was, now });
+      continue;
+    }
+    const { paths: wasPaths, ...wasFacts } = was;
+    const { paths: nowPaths, ...nowFacts } = now;
+    changed.push({ page, was: wasFacts, now: nowFacts, added: nowPaths.filter((p) => !wasPaths.includes(p)), removed: wasPaths.filter((p) => !nowPaths.includes(p)) });
   }
   return changed;
 }

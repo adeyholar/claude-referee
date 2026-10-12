@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Changed
+
+- Weekly docs watch: `llms.txt` is now recorded with its sorted link paths next to the count, so a change prints the added and removed pages (a swap that keeps the count included); a snapshot that holds only the count still compares by hash until the next `--update`. Record: [docs-watch-link-paths.md](docs/decisions/docs-watch-link-paths.md).
+
 ## [0.2.8] - 2026-10-11
 
 `done` now reads several kinds of log that used to count as exit-code-only (echoed check commands, silent eslint and oxlint runs, Vite builds with only the `built in` line), `lint-pack` warns on two more wording traps, and two Windows defects are fixed. The new `done` readings are checked on invented suites and on replays of real logs; their wrong `met` rate on real use is not labelled yet. Echoed command lines, arguments included, can now be sent to Jev in exit-code-only runs ([privacy](docs/privacy.md)).

@@ -6,7 +6,7 @@ export function facts(page: string, text: string): Record<string, unknown>;
 export function compare(
   recorded: Record<string, { sha256: string; facts: unknown } | undefined>,
   current: Record<string, { sha256: string; facts: unknown } | undefined>,
-): { page: string; was: unknown; now: unknown }[];
+): { page: string; was: unknown; now: unknown; added?: string[]; removed?: string[] }[];
 export const SDK_CHANGELOGS: Record<string, string>;
 export type Release = { version: string; date: string };
 export function latestRelease(text: string): Release | null;

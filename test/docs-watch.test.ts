@@ -8,7 +8,7 @@ const MODELS = "# Models\n\n| Rate limits | 100K tokens per second / 40 requests
 
 test("facts reads the limits row and the model ids from models.md and counts links in llms.txt", () => {
   assert.deepEqual(facts("models.md", MODELS), { rate_limits: "| Rate limits | 100K tokens per second / 40 requests per second |", models: ["jev-1.13.0"] });
-  assert.deepEqual(facts("llms.txt", "# TypeSafe AI\n- [A](a)\n- [B](b)\ntext\n"), { links: 2 });
+  assert.deepEqual(facts("llms.txt", "# TypeSafe AI\n- [B](b)\n- [A](a)\ntext\n"), { links: 2, paths: ["a", "b"] });
   assert.deepEqual(facts("api.md", "x"), {});
 });
 
@@ -43,4 +43,15 @@ test("a changed SDK version gives a notice and is not a changed page; the jagged
   assert.deepEqual(facts(page, text), { reviewed: "2026-10-02" });
   const entry = (t: string) => ({ sha256: sha256(t), facts: facts(page, t) });
   assert.equal(compare({ [page]: entry(text) }, { [page]: entry(text.replace("10-02", "10-20")) })[0]?.page, page);
+});
+
+test("a changed llms.txt names the added and removed pages, also when the link count stays the same, and still compares an old snapshot by hash", () => {
+  const entry = (text: string) => ({ sha256: sha256(text), facts: facts("llms.txt", text) });
+  const before = "- [A](https://docs.typesafe.ai/a.md)\n- [B](b.md)\n";
+  const added = compare({ "llms.txt": entry(before) }, { "llms.txt": entry(before + "- [C](c.md)\n") });
+  assert.deepEqual(added, [{ page: "llms.txt", was: { links: 2 }, now: { links: 3 }, added: ["c.md"], removed: [] }]);
+  const swapped = compare({ "llms.txt": entry(before) }, { "llms.txt": entry("- [A](a.md)\n- [D](d.md)\n") });
+  assert.deepEqual([swapped[0]?.added, swapped[0]?.removed], [["d.md"], ["b.md"]]);
+  const old = { sha256: sha256("x"), facts: { links: 2 } };
+  assert.deepEqual(compare({ "llms.txt": old }, { "llms.txt": entry(before) }), [{ page: "llms.txt", was: { links: 2 }, now: { links: 2, paths: ["a.md", "b.md"] } }]);
 });
