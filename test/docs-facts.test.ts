@@ -1,4 +1,4 @@
-// Doc statements checked against code and data: supported versions, what done sends for parsed output (docs and the dashboard Privacy tab), the generic pack's questions and threshold keys.
+// Doc statements checked against code and data: supported versions, the release header, what done sends for parsed output (docs and the dashboard Privacy tab), the generic pack's questions and threshold keys.
 
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -17,6 +17,15 @@ test("SECURITY.md supports the current minor line and calls no shipped feature u
   assert.match(doc, new RegExp(`^\\| ${line.replace(/\./g, "\\.")} \\| Yes \\|$`, "m"));
   assert.doesNotMatch(doc, /unreleased/i);
   assert.doesNotMatch(read("docs/measurements.md"), /v2 \(unreleased\)/);
+});
+
+test("the version files, the changelog and the ROADMAP release header and row all name the current version", () => {
+  const version = (JSON.parse(read("package.json")) as { version: string }).version;
+  for (const path of ["plugins/claude-referee/.claude-plugin/plugin.json", "npm/package.json"]) assert.equal((JSON.parse(read(path)) as { version: string }).version, version, path);
+  assert.equal(/^## \[(\d+\.\d+\.\d+)\]/m.exec(read("CHANGELOG.md"))?.[1], version, "first versioned CHANGELOG section");
+  const roadmap = read("ROADMAP.md");
+  assert.ok(roadmap.includes(`Latest release: v${version} (`), "ROADMAP header names the latest release");
+  assert.match(roadmap, new RegExp(`^\\| Release ${version.replace(/\./g, "\\.")} \\|`, "m"));
 });
 
 test("configuration.md lists every question of the generic pack and every threshold group and key it ships", () => {
