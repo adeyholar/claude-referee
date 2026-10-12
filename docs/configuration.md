@@ -156,6 +156,7 @@ The commands read these groups and keys; the value in brackets is the `generic` 
 | `done.met` | `met` (0.7), `missing` (0.5) | `done` |
 | `decide.best`, `decide.fit` | `clear` (0.85), `margin` (0.1) | `decide`; `decide.fit` when the options don't fit one request |
 | each `judge` question: `line.risky`, `failure.env`, `string.translatable` (i18n pack) | `auto` (0.9) | `judge` |
+| `audit.pushback` | `auto` (0.9) | `audit --ask` |
 | `verify.relation` | `supports` (0.8), `contradicts` (0.5), `says_nothing` (0.5) | `claims` |
 | `verify.injection` | `flag` (0.7) | `claims` |
 | `stop.gate`, one group for the four `stop.*` questions (a key under `stop.claims_done` is not read) | `claims_done` (0.7), `verification_applies` (0.5), `claims_verified` (0.5), `blocked` (0.4) | the done-gate, `receipts --stops` and the dashboard (`claims_done`, for the threshold suggestion) |
@@ -180,7 +181,7 @@ A pattern may carry `flags`, such as `"i"`. The `g` and `y` flags are ignored, s
 
 Packs are data only; claude-referee never runs code from a pack.
 
-The `generic` pack has these 11 questions: `done.met`, `verify.relation`, `verify.injection`, `decide.best`, `decide.fit`, for `judge` `line.risky` and `failure.env`, and for the done-gate `stop.claims_done`, `stop.claims_verified`, `stop.verification_applies` and `stop.outcome`. A pack used with `hooks.stopGate` needs the four `stop.*` questions, its own or through `"extends": "generic"`; without them the gate records `config_error`.
+The `generic` pack has these 12 questions: `done.met`, `verify.relation`, `verify.injection`, `decide.best`, `decide.fit`, for `judge` `line.risky` and `failure.env`, for `audit --ask` `audit.pushback`, and for the done-gate `stop.claims_done`, `stop.claims_verified`, `stop.verification_applies` and `stop.outcome`. A pack used with `hooks.stopGate` needs the four `stop.*` questions, its own or through `"extends": "generic"`; without them the gate records `config_error`.
 
 The `i18n` pack extends `generic` and adds `string.translatable` for `judge`: see [the i18n recipe](recipes/i18n.md).
 

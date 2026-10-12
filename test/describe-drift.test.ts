@@ -148,6 +148,11 @@ test("every key a command prints is named in its --describe contract", async () 
     );
     await call(["audit", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")], { env: local });
     await call(["audit", "--since", "never"], { env: local });
+    await call(["audit", "--ask", "--project", "fixture", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")]);
+    await call(["audit", "--ask", "--project", "fixture", "--dir", join(cwd, "transcripts"), "--dry-run"]);
+    await call(["audit", "--ask", "--dir", join(cwd, "transcripts")]);
+    writeFileSync(join(cwd, "terms.txt"), "# nothing here matches\nzzz-no-match\n");
+    await call(["audit", "--ask", "--project", "fixture", "--dir", join(cwd, "transcripts"), "--skip", join(cwd, "terms.txt"), "--data-dir", join(dataDir, "audit")]);
     await call(["receipts"], { env: local });
     await call(["receipts", "--tokens"], { env: local });
     await call(["receipts", "--usage"], { env: local });

@@ -82,26 +82,33 @@ export function tallySession(text: string, since = ""): Tally {
   return t;
 }
 
-export function auditDir(root: string, options: AuditOptions = {}, read: (path: string) => string = (p) => readFileSync(p, "utf8")): Report {
-  const total = emptyTally();
-  const folders: FolderTally[] = [];
+export function sessionFolders(root: string, project?: string): { folders: { name: string; files: string[] }[]; unreadable: number } {
+  const folders: { name: string; files: string[] }[] = [];
   let unreadable = 0;
   let names: string[] = [];
   try {
-    names = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && (!options.project || e.name.includes(options.project))).map((e) => e.name);
+    names = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && (!project || e.name.includes(project))).map((e) => e.name);
   } catch {
-    return { total, folders, unreadable };
+    return { folders, unreadable };
   }
   for (const name of names.sort()) {
-    const tally = emptyTally();
-    let files: string[] = [];
     try {
-      files = readdirSync(join(root, name)).filter((f) => f.endsWith(".jsonl"));
+      folders.push({ name, files: readdirSync(join(root, name)).filter((f) => f.endsWith(".jsonl")).sort() });
     } catch {
       unreadable += 1;
-      continue;
     }
-    for (const file of files.sort()) {
+  }
+  return { folders, unreadable };
+}
+
+export function auditDir(root: string, options: AuditOptions = {}, read: (path: string) => string = (p) => readFileSync(p, "utf8")): Report {
+  const total = emptyTally();
+  const found = sessionFolders(root, options.project);
+  let unreadable = found.unreadable;
+  const folders: FolderTally[] = [];
+  for (const { name, files } of found.folders) {
+    const tally = emptyTally();
+    for (const file of files) {
       try {
         addTally(tally, tallySession(read(join(root, name, file)), options.since));
       } catch {
@@ -110,10 +117,12 @@ export function auditDir(root: string, options: AuditOptions = {}, read: (path: 
     }
     if (tally.turns === 0) continue;
     addTally(total, tally);
-    folders.push({ folder: createHash("sha256").update(name).digest("hex").slice(0, 12), ...(options.names ? { name } : {}), ...tally });
+    folders.push({ folder: folderHash(name), ...(options.names ? { name } : {}), ...tally });
   }
-  folders.sort((a, b) => b.classes.verified + b.classes.unverified_ran_checks + b.classes.unverified_no_check - (a.classes.verified + a.classes.unverified_ran_checks + a.classes.unverified_no_check));
+  folders.sort((a, b) => editTurns(b) - editTurns(a));
   return { total, folders, unreadable };
 }
+
+export const folderHash = (name: string): string => createHash("sha256").update(name).digest("hex").slice(0, 12);
 
 export const editTurns = (t: Tally): number => t.classes.verified + t.classes.unverified_ran_checks + t.classes.unverified_no_check;

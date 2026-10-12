@@ -1,0 +1,13 @@
+{
+  "audit.pushback": {
+    "type": "noul",
+    "instructions": {
+      "question": "Does `next_prompt` say that the previous work, described by `previous_message`, fell short of what was asked?",
+      "note": "`previous_message` is the assistant's last message of the previous turn; `next_prompt` is what the user wrote next. A new request, a follow-up question, thanks or approval is not pushback. Asking to extend the work is not pushback unless the user says something that was asked for is missing or wrong."
+    },
+    "criteria": {
+      "true": "The user reports that the previous work failed, is wrong, or misses something that was asked for.",
+      "false": "The user approves, thanks, moves on, asks something new or asks for an extension."
+    }
+  }
+}

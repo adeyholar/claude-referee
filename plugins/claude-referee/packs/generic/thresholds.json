@@ -30,5 +30,8 @@
     "claims_verified": 0.5,
     "verification_applies": 0.5,
     "blocked": 0.4
+  },
+  "audit.pushback": {
+    "auto": 0.9
   }
 }

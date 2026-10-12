@@ -242,6 +242,8 @@ EOF
 
 # Count, from your own local transcripts, how many of your Claude Code edit turns ended with a passing check. Local only: no Jev call, nothing sent.
 npx claude-referee audit --since 2026-10-01
+# Opt in to a Jev reading of those turns for one project: does an unverified "done" predict that you push back next? Sends redacted excerpts; look first with --dry-run, and keep terms out with --skip <file>.
+npx claude-referee audit --ask --project my-repo --dry-run
 
 # See what would be sent, without calling Jev
 npm test 2>&1 | npx claude-referee done --criteria "all tests pass" --evidence - --dry-run

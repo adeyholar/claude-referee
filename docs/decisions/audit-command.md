@@ -1,6 +1,6 @@
 # `audit`: the Stop gate replayed over your own transcripts
 
-Registered 2026-10-12. Step 1 (local, no Jev) is built and described under Result; step 2 (asking Jev) is registered here and has not run, so no bar below has been looked at yet. Chosen with `decide` among four directions: audit 1.00, both orders agreeing (receipt `rmv5a77raka7z`); the option costs in that context were written by the maintainer's assistant, so the 1.00 is not independent evidence. The measured facts below are.
+Registered 2026-10-12. Step 1 (local, no Jev) is built and described under Result; step 2 (asking Jev) is registered here and built, and has not run on any transcript yet, so no bar below has been looked at. Chosen with `decide` among four directions: audit 1.00, both orders agreeing (receipt `rmv5a77raka7z`); the option costs in that context were written by the maintainer's assistant, so the 1.00 is not independent evidence. The measured facts below are.
 
 ## Why
 
@@ -23,7 +23,7 @@ Built. For each real user prompt of each main transcript it replays the Stop gat
 
 ## Step 2: reading the turns with Jev (registered, not run)
 
-`audit --ask` (opt-in, prints what will leave the machine and the token estimate first; `--dry-run` sends nothing). Per edit turn with a next prompt it asks Jev, with the existing redaction:
+`audit --ask` (opt-in; `--dry-run` prints what would leave the machine and the token estimate and sends nothing). Per edit turn with a next prompt it asks Jev, with the existing redaction:
 
 1. the Stop gate's own questions (`stop.claims_done`, `stop.claims_verified`, `stop.verification_applies`, `stop.outcome`) on the turn's task, final message, checks and edits, exactly as the hook would have, giving the gate's `would_block` for that turn;
 2. one new yes/no question, `audit.pushback`, on the previous final message and the next prompt: does the next prompt say the previous work was wrong, incomplete, broken or not what was asked.
@@ -42,6 +42,16 @@ If B3 holds, the Stop gate's `soft` wording gets a measured sentence (still neve
 ### Data scope
 
 This repository's own folders first. Other projects' transcripts contain employers' code and text; sending excerpts of them to the TypeSafe API needs the maintainer's explicit yes for each scope, and that yes has not been given.
+
+### Amendments before the first request (2026-10-12)
+
+Made while building step 2, after step 1's numbers and before any Jev request on transcripts; the bars B1 to B4 are unchanged.
+
+- `--ask` requires `--project <text>` (no run over every folder) and stops at 300 turns (`too_large`). A dry run (`--dry-run`) prints every request that would be sent; it is the "print first" of the text above.
+- `--skip <file>` (the `.private-terms` format) drops a turn whose session task, final message, check commands, edited paths or next prompt matches. It exists because the dry run on this repository found one private term in the text of one turn's request; with the maintainer's `.private-terms` as the skip file that turn is not sent. The count is printed as `skipped`.
+- The pushback question text is the one shipped in `plugins/claude-referee/packs/generic/questions/audit.json`; its first wording failed the pack's own `compound` lint rule (and/or) and was reduced to one idea before any request.
+- Verdict names: `not_evaluable` (B2 not met), `signal` (B2 and B3 met), `no_signal` (B2 met, B3 not). B3 is computed on the gate table (would_block against pushback).
+- The data scope stays this repository's own folders; the dry run of 99 requests is about 85,000 input tokens (under 0.01 USD).
 
 ## Not in this decision
 
