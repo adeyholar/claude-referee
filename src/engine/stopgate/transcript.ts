@@ -301,6 +301,24 @@ export function userPrompts(text: string): { ts: string; text: string }[] {
   return out;
 }
 
+// Every real prompt in order with the offset of its line, its timestamp ("" when missing) and text; the audit cuts the transcript there to replay each stop.
+export function promptOffsets(text: string): { lineStart: number; ts: string; text: string }[] {
+  const out: { lineStart: number; ts: string; text: string }[] = [];
+  let pos = 0;
+  while (pos < text.length) {
+    let end = text.indexOf("\n", pos);
+    if (end === -1) end = text.length;
+    const line = text.slice(pos, end);
+    if (isPromptCandidate(line)) {
+      const entry = parseLine(line) as (Entry & { timestamp?: unknown }) | null;
+      const found = promptText(entry);
+      if (found !== null) out.push({ lineStart: pos, ts: typeof entry?.timestamp === "string" ? entry.timestamp : "", text: found });
+    }
+    pos = end + 1;
+  }
+  return out;
+}
+
 function isPromptCandidate(line: string): boolean {
   return USER_LINE.test(line) && !TOOL_RESULT_LINE.test(line);
 }

@@ -134,6 +134,20 @@ test("every key a command prints is named in its --describe contract", async () 
     await call(done, { stdin: "Tests: 12 passed, 12 total\n", env: { ...keyed, CLAUDE_CODE_SESSION_ID: "s" } });
     mkdirSync(join(home, ".claude", "projects", "-elsewhere"), { recursive: true });
     writeFileSync(join(home, ".claude", "projects", "-elsewhere", "s.jsonl"), "{}\n");
+    const transcripts = join(cwd, "transcripts", "-fixture");
+    mkdirSync(join(transcripts, "bad.jsonl"), { recursive: true });
+    const turn = (message: unknown, extra: object = {}) => JSON.stringify({ isSidechain: false, ...extra, message });
+    writeFileSync(
+      join(transcripts, "s.jsonl"),
+      [
+        turn({ role: "user", content: "go" }, { type: "user", timestamp: "2026-10-01T10:00:00Z" }),
+        turn({ role: "assistant", content: [{ type: "tool_use", id: "t1", name: "Edit", input: { file_path: "/a.ts" } }] }, { type: "assistant" }),
+        turn({ role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "ok" }] }, { type: "user" }),
+        turn({ role: "user", content: "ok" }, { type: "user", timestamp: "2026-10-01T11:00:00Z" }),
+      ].join("\n") + "\n",
+    );
+    await call(["audit", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")], { env: local });
+    await call(["audit", "--since", "never"], { env: local });
     await call(["receipts"], { env: local });
     await call(["receipts", "--tokens"], { env: local });
     await call(["receipts", "--usage"], { env: local });

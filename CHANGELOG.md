@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- `audit`: replays the Stop gate over your local Claude Code transcripts and counts, per project folder, how many edit turns ended with a passing check (`verified`), with checks that did not pass after the last edit, or with no check, plus subagent calls and how many next prompts carry the gate's weak breakage cue. Local only: no key, no Jev call, nothing sent, no message text kept; folders are 12-hex hashes unless `--names`; the full table goes to a file in the results folder. On the maintainer's machine 63 of 286 edit turns were verified. Reading the turns with Jev is registered and not built yet. Record: [audit-command.md](docs/decisions/audit-command.md).
+
 ### Changed
 
 - Weekly docs watch: `llms.txt` is now recorded with its sorted link paths next to the count, so a change prints the added and removed pages (a swap that keeps the count included); a snapshot that holds only the count still compares by hash until the next `--update`. Record: [docs-watch-link-paths.md](docs/decisions/docs-watch-link-paths.md).
