@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { commands } from "../src/cli/commands/index.ts";
 import { run } from "../src/cli/run.ts";
-import { auditDir, tallySession } from "../src/engine/audit/report.ts";
+import { auditDir, isoWeek, tallySession } from "../src/engine/audit/report.ts";
 import { auditTurns } from "../src/engine/audit/turns.ts";
 import { analyzeTranscript, promptOffsets } from "../src/engine/stopgate/transcript.ts";
 import { memoryIo, tempDir } from "./helpers.ts";
@@ -147,4 +147,13 @@ test("audit rejects a bad --since and an empty directory with a next step", asyn
   const empty = memoryIo();
   assert.equal(await run(["audit", "--dir", tempDir("audit-empty-"), "--data-dir", tempDir()], empty, commands), 1);
   assert.match(String(empty.json()["next_step"]), /--dir|--project/);
+});
+
+test("isoWeek follows ISO 8601 across year ends, and the tally keeps edit and verified turns per week", () => {
+  assert.equal(isoWeek("2026-10-12T10:00:00Z"), "2026-W42");
+  assert.equal(isoWeek("2026-01-01T00:00:00Z"), "2026-W01");
+  assert.equal(isoWeek("2027-01-01T00:00:00Z"), "2026-W53");
+  assert.equal(isoWeek("2024-12-30T00:00:00Z"), "2025-W01");
+  assert.equal(isoWeek("nope"), "");
+  assert.deepEqual(tallySession(SESSION()).weeks, { "2026-W40": { edit_turns: 2, verified: 1 } });
 });

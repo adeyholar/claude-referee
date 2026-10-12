@@ -81,6 +81,7 @@ test("evaluateAsk applies the registered bars: power first, then ratio and Fishe
   assert.ok((strong.gate.fisher_p ?? 1) < 0.01);
   assert.equal(strong.verdict, "signal");
   assert.ok((strong.auroc ?? 0) > 0.5);
+  assert.deepEqual(strong.funnel, { unverified: 40, answered: 40, claimed_done: 20, not_verified: 20, check_applies: 20, would_block: 20 });
   assert.equal(study(20, 8, 7).verdict, "no_signal");
   const small = study(5, 4, 0);
   assert.equal(small.enough_data, false);

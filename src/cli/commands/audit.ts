@@ -12,6 +12,7 @@ import type { Command, Context } from "../types.ts";
 import { JEV_COST, JEV_EFFECTS, JEV_ERRORS, jevCommand, openPack, str } from "../shared.ts";
 
 const TOP = 10;
+const WEEKS = 8;
 
 const unverified = (t: Tally): number => t.classes.unverified_ran_checks + t.classes.unverified_no_check;
 const rate = (t: Tally, classes: readonly (keyof Tally["classes"])[]) => ({ n: classes.reduce((s, c) => s + t.next_prompt[c].n, 0), weak_cue: classes.reduce((s, c) => s + t.next_prompt[c].cue, 0) });
@@ -30,6 +31,7 @@ const summary = (t: Tally) => ({
   next_prompt_after_no_edit: rate(t, ["no_edit"]),
   first: t.first,
   last: t.last,
+  weeks: Object.entries(t.weeks).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-WEEKS).map(([week, w]) => ({ week, edit_turns: w.edit_turns, verified: w.verified })),
 });
 
 async function ask(context: Context, dir: string, project: string | undefined, since: string) {
@@ -106,6 +108,7 @@ export const audit: Command = {
       next_prompt_after_verified: "{n, weak_cue}: of the verified turns that have a next prompt, how many next prompts report breakage or repeat the request (the Stop gate's weak hint; it is built to avoid false positives and misses most pushback, so it is a floor, not a label)",
       next_prompt_after_unverified: "The same for unverified edit turns",
       next_prompt_after_no_edit: "The same for turns without edits",
+      weeks: `The last ${WEEKS} ISO weeks with edit turns: week, edit_turns, verified (the verified share per week, to see whether a change such as the session briefing moved it)`,
       first: "Earliest turn time seen",
       last: "Latest turn time seen",
       top: `The ${TOP} folders with the most edit turns: folder (hash), edit_turns, verified, unverified, subagent_calls`,
@@ -114,6 +117,7 @@ export const audit: Command = {
       population: "With --ask: edit turns that have a next prompt",
       asked: "With --ask: {stop, pushback}, the number of turns sent to the Stop gate's questions (unverified turns only, as the hook would) and to the pushback question",
       would_block: "With --ask: turns the Stop gate would have flagged (claims done, not verified, a check applies, not blocked)",
+      funnel: "With --ask: where unverified turns drop out of the gate: unverified (edit turns without a passing check), answered (Jev answered the gate), claimed_done (claims_done at the gate band), not_verified (and claims_verified below its band), check_applies (and a check applies), would_block (and not blocked or waiting for input; equals would_block)",
       pushback: "With --ask: {yes, no, review}, the user's next prompt read by Jev at the audit.pushback band (0.9 by default)",
       gate: "With --ask: would_block against pushback: group_yes, group_no (would_block turns with and without pushback), rest_yes, rest_no, rate_group, rate_rest, ratio and the one-sided Fisher exact p",
       unverified: "With --ask: the same split for unverified against verified turns",

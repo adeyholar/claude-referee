@@ -13,7 +13,13 @@ export interface Rate {
   cue: number;
 }
 
+export interface Week {
+  edit_turns: number;
+  verified: number;
+}
+
 export interface Tally {
+  weeks: Record<string, Week>;
   sessions: number;
   sessions_with_edits: number;
   turns: number;
@@ -44,7 +50,7 @@ export interface AuditOptions {
 
 const zeroClasses = (): Record<TurnClass, number> => ({ no_edit: 0, verified: 0, unverified_ran_checks: 0, unverified_no_check: 0 });
 const zeroRates = (): Record<TurnClass, Rate> => ({ no_edit: { n: 0, cue: 0 }, verified: { n: 0, cue: 0 }, unverified_ran_checks: { n: 0, cue: 0 }, unverified_no_check: { n: 0, cue: 0 } });
-export const emptyTally = (): Tally => ({ sessions: 0, sessions_with_edits: 0, turns: 0, classes: zeroClasses(), next_prompt: zeroRates(), subagent_calls: 0, subagent_reports: 0, first: "", last: "" });
+export const emptyTally = (): Tally => ({ weeks: {}, sessions: 0, sessions_with_edits: 0, turns: 0, classes: zeroClasses(), next_prompt: zeroRates(), subagent_calls: 0, subagent_reports: 0, first: "", last: "" });
 
 export function addTally(into: Tally, from: Tally): void {
   into.sessions += from.sessions;
@@ -57,8 +63,23 @@ export function addTally(into: Tally, from: Tally): void {
     into.next_prompt[c].n += from.next_prompt[c].n;
     into.next_prompt[c].cue += from.next_prompt[c].cue;
   }
+  for (const [week, w] of Object.entries(from.weeks)) {
+    const to = (into.weeks[week] ??= { edit_turns: 0, verified: 0 });
+    to.edit_turns += w.edit_turns;
+    to.verified += w.verified;
+  }
   if (from.first && (!into.first || from.first < into.first)) into.first = from.first;
   if (from.last > into.last) into.last = from.last;
+}
+
+// ISO 8601 week of an ISO timestamp, "" when it does not parse.
+export function isoWeek(ts: string): string {
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  const year = t.getUTCFullYear();
+  return `${year}-W${String(Math.ceil(((t.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7)).padStart(2, "0")}`;
 }
 
 export function tallySession(text: string, since = ""): Tally {
@@ -74,6 +95,12 @@ export function tallySession(text: string, since = ""): Tally {
     if (turn.nextPrompt !== null && turn.nextPrompt.trim()) {
       t.next_prompt[turn.klass].n += 1;
       if (turn.cue !== null) t.next_prompt[turn.klass].cue += 1;
+    }
+    const week = turn.klass === "no_edit" ? "" : isoWeek(turn.ts);
+    if (week) {
+      const w = (t.weeks[week] ??= { edit_turns: 0, verified: 0 });
+      w.edit_turns += 1;
+      if (turn.klass === "verified") w.verified += 1;
     }
     if (turn.ts && (!t.first || turn.ts < t.first)) t.first = turn.ts;
     if (turn.ts > t.last) t.last = turn.ts;

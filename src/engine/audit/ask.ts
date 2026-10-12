@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Questions } from "@typesafe-ai/sdk";
 import { RefereeError } from "../errors.ts";
-import { threshold, type Pack } from "../pack.ts";
+import { threshold, thresholdBelow, type Pack } from "../pack.ts";
 import type { Outcome, Planned } from "../session.ts";
 import { decideStop, stopQuestions, stopState } from "../stopgate/decide.ts";
 import { folderHash, sessionFolders } from "./report.ts";
@@ -34,6 +34,8 @@ export interface Row {
   would_block: boolean | null;
   claims_done: number | null;
   claims_verified: number | null;
+  verification_applies: number | null;
+  blocked: number | null;
   pushback_p: number | null;
   label: Label;
 }
@@ -141,6 +143,8 @@ export function evaluateAsk(turns: readonly AskTurn[], outcomes: readonly Outcom
       would_block: turn.klass === "verified" ? false : decision ? decision.would_block : null,
       claims_done: decision?.claims_done ?? null,
       claims_verified: decision?.claims_verified ?? null,
+      verification_applies: decision?.verification_applies ?? null,
+      blocked: decision?.outcome["blocked"] ?? null,
       pushback_p: p,
       label: p === null ? "none" : p >= band ? "yes" : p <= 1 - band ? "no" : "review",
     };
@@ -154,6 +158,12 @@ export function evaluateAsk(turns: readonly AskTurn[], outcomes: readonly Outcom
   const pushbackYes = rows.filter((r) => r.label === "yes").length;
   const enough = wouldBlock >= MIN_GROUP && pushbackYes >= MIN_GROUP;
   const signal = (s: Split) => s.ratio !== null && s.ratio >= 2 && s.fisher_p !== null && s.fisher_p < 0.05;
+  const at = { done: threshold(pack, thresholds, "stop.gate", "claims_done", 0.7), verified: thresholdBelow(pack, thresholds, "stop.gate", "claims_verified", 0.5), applies: threshold(pack, thresholds, "stop.gate", "verification_applies", 0.5), blocked: thresholdBelow(pack, thresholds, "stop.gate", "blocked", 0.4) };
+  const answered = rows.filter((r) => r.claims_done !== null);
+  const claimedDone = answered.filter((r) => (r.claims_done ?? 0) >= at.done);
+  const notVerified = claimedDone.filter((r) => (r.claims_verified ?? 1) < at.verified);
+  const checkApplies = notVerified.filter((r) => (r.verification_applies ?? 0) >= at.applies);
+  const funnel = { unverified: rows.filter((r) => r.klass !== "verified").length, answered: answered.length, claimed_done: claimedDone.length, not_verified: notVerified.length, check_applies: checkApplies.length, would_block: checkApplies.filter((r) => (r.blocked ?? 1) < at.blocked).length };
   const verdict = !enough ? "not_evaluable" : signal(gate) ? "signal" : "no_signal";
   return {
     verdict,
@@ -161,6 +171,7 @@ export function evaluateAsk(turns: readonly AskTurn[], outcomes: readonly Outcom
     population: rows.length,
     asked: { stop: rows.filter((r) => r.klass !== "verified").length, pushback: rows.filter((r) => r.label !== "none").length },
     would_block: wouldBlock,
+    funnel,
     pushback: { yes: pushbackYes, no: rows.filter((r) => r.label === "no").length, review: rows.filter((r) => r.label === "review").length },
     gate,
     unverified: klass,

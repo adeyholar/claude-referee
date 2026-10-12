@@ -1,6 +1,6 @@
 # `audit`: the Stop gate replayed over your own transcripts
 
-Registered 2026-10-12. Step 1 (local, no Jev) is built and described under Result; step 2 (asking Jev) is registered here and built, and has not run on any transcript yet, so no bar below has been looked at. Chosen with `decide` among four directions: audit 1.00, both orders agreeing (receipt `rmv5a77raka7z`); the option costs in that context were written by the maintainer's assistant, so the 1.00 is not independent evidence. The measured facts below are.
+Registered 2026-10-12. Step 1 (local, no Jev) is built and described under Result; step 2 (asking Jev) is registered, built and run once on this repository's folders (see Result of step 2); the bars below were fixed before that run. Chosen with `decide` among four directions: audit 1.00, both orders agreeing (receipt `rmv5a77raka7z`); the option costs in that context were written by the maintainer's assistant, so the 1.00 is not independent evidence. The measured facts below are.
 
 ## Why
 
@@ -52,6 +52,21 @@ Made while building step 2, after step 1's numbers and before any Jev request on
 - The pushback question text is the one shipped in `plugins/claude-referee/packs/generic/questions/audit.json`; its first wording failed the pack's own `compound` lint rule (and/or) and was reduced to one idea before any request.
 - Verdict names: `not_evaluable` (B2 not met), `signal` (B2 and B3 met), `no_signal` (B2 met, B3 not). B3 is computed on the gate table (would_block against pushback).
 - The data scope stays this repository's own folders; the dry run of 99 requests is about 85,000 input tokens (under 0.01 USD).
+
+## Result of step 2, first run (2026-10-12, this repository's folders)
+
+Run once on this repository's own transcript folders with `--skip` set to the maintainer's private-terms file (1 turn dropped; the dry run was checked for those terms first: 0 matches). 97 requests, about 83,000 input tokens (about 0.004 USD at the list price), receipt `rmv5ay6zh9on3`, no request failed or was stopped. A second run read all 97 answers from the cache.
+
+- Population: 56 edit turns with a next prompt, 41 of them unverified.
+- `would_block`: 3 of the 41 unverified turns (7 percent). Pushback at the 0.90 band: 0 of 56; 42 below 0.10; 14 in between.
+- **B2 (power): not met** (3 `would_block` turns and 0 pushback turns against 15 and 15). Verdict `not_evaluable`. **B1** has nothing to check (no turn was labelled pushback). **B3** is not defined (rate 0 in both groups). **B4** met (97 requests, counts only in the file, well under 5 USD).
+- Post-hoc reading, not a bar: the assistant read the 12 next prompts with the highest pushback scores (0.61 down to 0.10) against their text. None is a clear report of failure; one is an implicit retry request ("try again") that scored 0.22, so the question may miss that kind of pushback (n = 1). The weak cue had fired on 1 of the 57 edit-turn next prompts of these folders (before the skip file).
+- What the first run says about the study: pushback is rare in this maintainer's real sessions (0 of 56 at 0.90, the weak cue 1 of 57). Even if every local folder were added (261 edit turns with a next prompt), the expected number of pushback turns stays in single digits, so B2's 15 is out of reach on this machine's data. A predictive claim about the gate needs a denser label, more months of data or other users' data. No claim is made.
+
+### What the run did show (descriptive, added after the first run, no bar)
+
+- The gate funnel on the 41 unverified turns: 7 claimed the work was done, 5 of those were not verified, a check applied to 3, and 3 would have been flagged. The raw unverified share of edit turns (0.77 machine-wide, 0.76 here) overstates what a reminder would say: most unverified turns did not claim to be finished or the change needed no check. `audit --ask` now prints this as `funnel`.
+- Verified share of edit turns by ISO week, all local folders: 2026-W37 3 of 8, W38 0 of 15, W39 5 of 54, W40 3 of 20, W41 48 of 179, W42 (to 10-12) 4 of 10. The session briefing with the done-check line is in use since 2026-10-09 (W41). W41's 179 edit turns are mostly this repository's own development, where checks are the habit, so the rise is not shown to be an effect of the briefing; split by folder before reading it (the file report has per-folder weeks). `audit` now prints the last eight weeks as `weeks`.
 
 ## Not in this decision
 
