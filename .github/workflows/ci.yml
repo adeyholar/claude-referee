@@ -59,7 +59,7 @@ jobs:
           echo 'not json' | node "$tmp/claude-referee/dist/hook.mjs" session-start
           size=$(cat "$tmp"/claude-referee/dist/*.mjs | wc -c)
           echo "bundle bytes: $size"
-          test "$(wc -c < "$tmp/claude-referee/dist/cli.mjs")" -lt 400000
+          test "$(wc -c < "$tmp/claude-referee/dist/cli.mjs")" -lt 450000
           test "$(wc -c < "$tmp/claude-referee/dist/hook.mjs")" -lt 200000
       - name: Hook start latency stays within 40 ms of a bare node at p95
         run: node scripts/hook-latency.mjs

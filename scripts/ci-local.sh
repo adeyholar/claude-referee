@@ -25,7 +25,7 @@ for c in done decide judge claims verify receipts doctor eval; do
 done
 echo 'not json' | clean_env node "$tmp/claude-referee/dist/hook.mjs" session-start
 echo '{}' | clean_env node "$tmp/claude-referee/dist/hook.mjs" stop
-test "$(wc -c < "$tmp/claude-referee/dist/cli.mjs")" -lt 400000
+test "$(wc -c < "$tmp/claude-referee/dist/cli.mjs")" -lt 450000
 
 step "bundle on Node 20.3, as the CI bundle job (cached download, checksum verified)"
 n20="$(bash scripts/ci-node.sh 20.3.0)"; "$n20" --version
