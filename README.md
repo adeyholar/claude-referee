@@ -242,6 +242,8 @@ EOF
 
 # Count, from your own local transcripts, how many of your Claude Code edit turns ended with a passing check. Local only: no Jev call, nothing sent.
 npx claude-referee audit --since 2026-10-01
+# Did edit turns end with a passing check more often after a change date? Splits the same transcripts there; a verdict needs 30 edit turns in each window. An association, not an effect.
+npx claude-referee audit --compare 2026-10-09T14:00:00Z --exclude my-repo
 # Opt in to a Jev reading of those turns for one project: does an unverified "done" predict that you push back next? Sends redacted excerpts; look first with --dry-run, and keep terms out with --skip <file>.
 npx claude-referee audit --ask --project my-repo --dry-run
 

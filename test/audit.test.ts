@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { commands } from "../src/cli/commands/index.ts";
 import { run } from "../src/cli/run.ts";
-import { auditDir, isoWeek, tallySession } from "../src/engine/audit/report.ts";
+import { compareWindows } from "../src/engine/audit/compare.ts";
+import { addTally, auditDir, auditWindows, emptyTally, isoWeek, tallySession, tallyTurns, type FolderTally, type Report } from "../src/engine/audit/report.ts";
 import { auditTurns } from "../src/engine/audit/turns.ts";
 import { analyzeTranscript, promptOffsets } from "../src/engine/stopgate/transcript.ts";
 import { memoryIo, tempDir } from "./helpers.ts";
@@ -156,4 +157,66 @@ test("isoWeek follows ISO 8601 across year ends, and the tally keeps edit and ve
   assert.equal(isoWeek("2024-12-30T00:00:00Z"), "2025-W01");
   assert.equal(isoWeek("nope"), "");
   assert.deepEqual(tallySession(SESSION()).weeks, { "2026-W40": { edit_turns: 2, verified: 1 } });
+});
+
+test("auditWindows splits one scan into windows that equal separate runs, --until and --exclude narrow it, and an untimed turn is in no bounded window", () => {
+  const root = fixtureRoot();
+  const [before, after] = auditWindows(root, [{ until: "2026-10-02" }, { since: "2026-10-02" }]);
+  assert.deepEqual([before?.total.turns, after?.total.turns], [4, 2]);
+  assert.equal(auditDir(root, { until: "2026-10-02" }).total.turns, 4);
+  assert.equal(auditDir(root, { since: "2026-10-02" }).total.turns, 2);
+  assert.equal(auditDir(root, { exclude: "beta" }).total.turns, 5);
+  const untimed = auditTurns(new T().user("go").edit("/a.ts").text());
+  assert.equal(untimed.length, 1);
+  assert.deepEqual([tallyTurns(untimed, {}).turns, tallyTurns(untimed, { until: "2030-01-01" }).turns, tallyTurns(untimed, { since: "2020-01-01" }).turns], [1, 0, 0]);
+  assert.equal(auditWindows(root, [{ until: "2030-01-01" }])[0]?.total.turns, 6);
+});
+
+const folder = (id: string, verified: number, unverified: number): FolderTally => ({ ...emptyTally(), folder: id, turns: verified + unverified, classes: { no_edit: 0, verified, unverified_ran_checks: 0, unverified_no_check: unverified } });
+const report = (...folders: FolderTally[]): Report => {
+  const total = emptyTally();
+  for (const f of folders) addTally(total, f);
+  return { total, folders, unreadable: 0 };
+};
+
+test("compareWindows: C1 power, C2 higher and lower with the pooled and paired checks, and no verdict from pooled numbers alone", () => {
+  assert.equal(compareWindows(report(folder("a", 2, 8)), report(folder("a", 9, 1))).verdict, "not_evaluable");
+  const low = report(folder("a", 4, 8), folder("b", 4, 8), folder("c", 4, 8));
+  const high = report(folder("a", 9, 3), folder("b", 9, 3), folder("c", 9, 3));
+  const up = compareWindows(low, high);
+  assert.equal(up.verdict, "higher");
+  assert.deepEqual([up.before.share?.toFixed(2), up.after.share?.toFixed(2), up.paired?.folders], ["0.33", "0.75", 3]);
+  assert.ok(up.p_higher < 0.05 && up.p_lower > 0.9);
+  assert.equal(compareWindows(high, low).verdict, "lower");
+  assert.equal(compareWindows(low, low).verdict, "no_signal");
+  const mixBefore = report(folder("a", 6, 4), folder("b", 6, 4), folder("d", 0, 12));
+  const mixAfter = report(folder("a", 5, 5), folder("b", 5, 5), folder("c", 12, 0));
+  const mix = compareWindows(mixBefore, mixAfter);
+  assert.ok(mix.difference !== null && mix.difference >= 0.1 && mix.p_higher < 0.05, "pooled numbers alone would say higher");
+  assert.equal(mix.paired_difference !== null && mix.paired_difference < 0, true);
+  assert.equal(mix.verdict, "no_signal");
+  assert.equal(compareWindows(report(folder("a", 4, 8), folder("b", 4, 8), folder("c", 4, 8)), report(folder("x", 36, 0))).paired, null);
+  assert.equal(compareWindows(report(folder("a", 4, 8), folder("b", 4, 8), folder("c", 4, 8)), report(folder("x", 36, 0))).verdict, "no_signal");
+});
+
+test("audit --compare prints both windows with counts only, writes the folder table, and refuses bad dates and --ask", async () => {
+  const root = fixtureRoot();
+  const data = tempDir("audit-compare-data-");
+  const io = memoryIo({ env: { TYPESAFE_API_KEY: undefined } });
+  assert.equal(await run(["audit", "--dir", root, "--compare", "2026-10-02", "--data-dir", data], io, commands), 0);
+  const out = io.json();
+  assert.equal(out["verdict"], "not_evaluable");
+  assert.deepEqual([out["before"], out["after"]], [{ edit_turns: 2, verified: 1, share: 0.5 }, { edit_turns: 1, verified: 1, share: 1 }]);
+  assert.equal(out["paired"], null);
+  const file = out["report"] as string;
+  assert.ok(existsSync(file) && file.startsWith(data) && /audit-compare-/.test(file));
+  for (const text of ["fix the parser bug", "alpha", "beta"]) assert.ok(!(io.out.join("") + readFileSync(file, "utf8")).includes(text), `${text} leaked`);
+  const excluded = memoryIo();
+  assert.equal(await run(["audit", "--dir", root, "--compare", "2026-10-02", "--exclude", "alpha", "--data-dir", data], excluded, commands), 0);
+  assert.deepEqual([excluded.json()["before"], excluded.json()["after"]], [{ edit_turns: 0, verified: 0, share: null }, { edit_turns: 0, verified: 0, share: null }]);
+  for (const args of [["--compare", "later"], ["--until", "soon"], ["--ask", "--compare", "2026-10-02"]]) {
+    const bad = memoryIo();
+    assert.equal(await run(["audit", "--dir", root, ...args], bad, commands), 1, args.join(" "));
+    assert.equal(bad.json()["error"], "bad_input");
+  }
 });

@@ -148,6 +148,7 @@ test("every key a command prints is named in its --describe contract", async () 
     );
     await call(["audit", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")], { env: local });
     await call(["audit", "--since", "never"], { env: local });
+    await call(["audit", "--compare", "2026-10-02", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")], { env: local });
     await call(["audit", "--ask", "--project", "fixture", "--dir", join(cwd, "transcripts"), "--data-dir", join(dataDir, "audit")]);
     await call(["audit", "--ask", "--project", "fixture", "--dir", join(cwd, "transcripts"), "--dry-run"]);
     await call(["audit", "--ask", "--dir", join(cwd, "transcripts")]);

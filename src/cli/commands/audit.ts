@@ -6,7 +6,8 @@ import { join, resolve } from "node:path";
 import { resolveDataDir } from "../../engine/datadir.ts";
 import { RefereeError } from "../../engine/errors.ts";
 import { collectAskTurns, evaluateAsk, MAX_ASK, parseTerms, planAsk, withoutTerms } from "../../engine/audit/ask.ts";
-import { auditDir, editTurns, type Tally } from "../../engine/audit/report.ts";
+import { compareWindows } from "../../engine/audit/compare.ts";
+import { auditDir, auditWindows, editTurns, type Report, type Tally } from "../../engine/audit/report.ts";
 import { claudeProjectsDir } from "../../engine/usage.ts";
 import type { Command, Context } from "../types.ts";
 import { JEV_COST, JEV_EFFECTS, JEV_ERRORS, jevCommand, openPack, str } from "../shared.ts";
@@ -34,6 +35,19 @@ const summary = (t: Tally) => ({
   weeks: Object.entries(t.weeks).sort(([a], [b]) => (a < b ? -1 : 1)).slice(-WEEKS).map(([week, w]) => ({ week, edit_turns: w.edit_turns, verified: w.verified })),
 });
 
+function writeReport(context: Context, kind: string, body: unknown): string | undefined {
+  const { io } = context;
+  const dir = join(resolveDataDir(io.env, io.home, io.cwd, context.flags.dataDir), "results");
+  const path = join(dir, `${kind}-${new Date(io.now()).toISOString().replace(/[-:T]/g, "").slice(0, 14)}.json`);
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(path, JSON.stringify(body, null, 2) + "\n");
+    return path;
+  } catch {
+    return undefined;
+  }
+}
+
 async function ask(context: Context, dir: string, project: string | undefined, since: string) {
   if (!project) throw new RefereeError("bad_input", "--ask needs --project <text> so that the scope of what is sent is explicit.", { next_step: "Pass part of a transcript folder name, e.g. --project my-repo; run --dry-run first." });
   const skipFile = str(context, "skip");
@@ -58,16 +72,7 @@ async function ask(context: Context, dir: string, project: string | undefined, s
     planned,
     (outcomes) => {
       const { rows, verdict, ...rest } = evaluateAsk(turns, outcomes, pack, config?.thresholds);
-      const outDir = join(resolveDataDir(context.io.env, context.io.home, context.io.cwd, context.flags.dataDir), "results");
-      const path = join(outDir, `audit-ask-${new Date(context.io.now()).toISOString().replace(/[-:T]/g, "").slice(0, 14)}.json`);
-      let written: string | undefined;
-      try {
-        mkdirSync(outDir, { recursive: true });
-        writeFileSync(path, JSON.stringify({ since: since || null, ...rest, rows }, null, 2) + "\n");
-        written = path;
-      } catch {
-        void 0;
-      }
+      const written = writeReport(context, "audit-ask", { since: since || null, ...rest, rows });
       return {
         ok: true,
         verdict,
@@ -89,6 +94,9 @@ export const audit: Command = {
       "--dir <path>": "The transcripts root; default is the projects folder under the Claude config directory.",
       "--project <text>": "Only folders whose name contains this text.",
       "--since <ISO date>": "Only turns whose user prompt is at or after this time, e.g. 2026-10-01.",
+      "--until <ISO date>": "Only turns whose user prompt is before this time.",
+      "--exclude <text>": "Leave out folders whose name contains this text (e.g. this repository's own development, which checks by habit).",
+      "--compare <ISO date>": "Split the turns at this time and compare the verified share of edit turns before and after it, pooled and over folders with at least 3 edit turns in each window, with a one-sided Fisher exact test. Verdict: not_evaluable (under 30 edit turns in a window), higher, lower or no_signal; an association after a date, not an effect. Local only.",
       "--names": "Show each folder's name in the file report (default: a 12-hex hash). The summary line never shows names.",
       "--skip <file>": "With --ask: a file of regular expressions, one per line (the format of a .private-terms file). A turn whose session task, final message, check commands, edited paths or next prompt matches any of them is not sent.",
       "--ask": `Read the edit turns that have a next prompt with Jev (the Stop gate's questions and a pushback question) and compare the gate with the user's pushback. Needs --project; at most ${MAX_ASK} turns. Sends redacted excerpts of those turns (the session's first prompt, the final message, the check commands and the next prompt) to the TypeSafe API: run it with --dry-run first to see exactly what would be sent.`,
@@ -113,6 +121,14 @@ export const audit: Command = {
       last: "Latest turn time seen",
       top: `The ${TOP} folders with the most edit turns: folder (hash), edit_turns, verified, unverified, subagent_calls`,
       report: "Path of the file holding every folder's tally",
+      cut: "With --compare: the split time",
+      before: "With --compare: {edit_turns, verified, share} for turns before the cut",
+      after: "With --compare: the same for turns at or after the cut",
+      difference: "With --compare: share after minus share before, or null",
+      p_higher: "With --compare: one-sided Fisher exact p that the share after is higher (read as: below 0.05 and a difference of at least 0.10 for higher)",
+      p_lower: "With --compare: the same for lower",
+      paired: "With --compare: {folders, before, after}, the same counts over folders with at least 3 edit turns in both windows, or null when fewer than 2 folders qualify",
+      paired_difference: "With --compare: the difference over those folders; higher and lower need it to point the same way",
       unreadable: "Folders or files that could not be read",
       population: "With --ask: edit turns that have a next prompt",
       asked: "With --ask: {stop, pushback}, the number of turns sent to the Stop gate's questions (unverified turns only, as the hook would) and to the pushback question",
@@ -132,25 +148,43 @@ export const audit: Command = {
     effects: `Reads transcript files and writes a JSON report to the results folder of the data directory. Without --ask nothing leaves the machine. ${JEV_EFFECTS}`,
     cost: `Free without --ask. With --ask: ${JEV_COST} One request for each unverified turn and one for each next prompt.`,
   },
-  options: { dir: { type: "string" }, project: { type: "string" }, since: { type: "string" }, names: { type: "boolean" }, ask: { type: "boolean" }, skip: { type: "string" } },
+  options: { dir: { type: "string" }, project: { type: "string" }, since: { type: "string" }, until: { type: "string" }, exclude: { type: "string" }, compare: { type: "string" }, names: { type: "boolean" }, ask: { type: "boolean" }, skip: { type: "string" } },
   asksJev: (context) => context.values["ask"] === true,
   async run(context) {
     const { io } = context;
-    const since = str(context, "since") ?? "";
-    if (since && Number.isNaN(Date.parse(since))) throw new RefereeError("bad_input", `--since is not a date: ${since}`, { next_step: "Use an ISO date such as 2026-10-01." });
+    const [since, until, cut, exclude] = ["since", "until", "compare", "exclude"].map((name) => str(context, name) ?? "") as [string, string, string, string];
+    for (const [name, value] of [["since", since], ["until", until], ["compare", cut]] as const) {
+      if (value && Number.isNaN(Date.parse(value))) throw new RefereeError("bad_input", `--${name} is not a date: ${value}`, { next_step: "Use an ISO date such as 2026-10-01." });
+    }
     const dir = str(context, "dir") ?? claudeProjectsDir(io.env, io.home);
     const project = str(context, "project");
-    if (context.values["ask"] === true) return ask(context, dir, project, since);
-    const report = auditDir(dir, { ...(project ? { project } : {}), ...(since ? { since } : {}), names: context.values["names"] === true });
-    if (report.total.turns === 0) throw new RefereeError("bad_input", "No transcripts with turns found.", { next_step: `Looked in ${dir}; pass --dir or loosen --project and --since.` });
-    const outDir = join(resolveDataDir(io.env, io.home, io.cwd, context.flags.dataDir), "results");
-    const path = join(outDir, `audit-${new Date(io.now()).toISOString().replace(/[-:T]/g, "").slice(0, 14)}.json`);
-    try {
-      mkdirSync(outDir, { recursive: true });
-      writeFileSync(path, JSON.stringify({ since: since || null, total: summary(report.total), folders: report.folders.map((f) => ({ folder: f.folder, ...(f.name ? { name: f.name } : {}), ...summary(f) })) }, null, 2) + "\n");
-    } catch {
-      void 0;
+    if (context.values["ask"] === true) {
+      if (until || cut || exclude) throw new RefereeError("bad_input", "--ask cannot be combined with --until, --exclude or --compare.", { next_step: "Narrow an --ask run with --project and --since." });
+      return ask(context, dir, project, since);
     }
+    const names = context.values["names"] === true;
+    const scope = { ...(project ? { project } : {}), ...(exclude ? { exclude } : {}), names };
+    const empty = new RefereeError("bad_input", "No transcripts with turns found.", { next_step: `Looked in ${dir}; pass --dir or loosen --project, --since and --until.` });
+    if (cut) {
+      const [before, after] = auditWindows(dir, [{ ...(since ? { since } : {}), until: cut }, { since: cut, ...(until ? { until } : {}) }], scope) as [Report, Report];
+      if (before.total.turns + after.total.turns === 0) throw empty;
+      const compare = compareWindows(before, after);
+      const window = (r: Report) => ({ total: summary(r.total), folders: r.folders.map((f) => ({ folder: f.folder, ...(f.name ? { name: f.name } : {}), ...summary(f) })) });
+      const file = writeReport(context, "audit-compare", { since: since || null, until: until || null, cut, compare, before: window(before), after: window(after) });
+      const { verdict, ...rest } = compare;
+      return {
+        ok: true,
+        verdict,
+        cut,
+        ...rest,
+        ...(file ? { report: file } : {}),
+        ...(before.unreadable ? { unreadable: before.unreadable } : {}),
+        next_step: verdict === "not_evaluable" ? "Under 30 edit turns in a window; this run decides nothing. Run it again when more turns exist." : "An association after a date, not an effect: nothing is randomised and habits drift. Read the paired line before citing it.",
+      };
+    }
+    const report = auditDir(dir, { ...scope, ...(since ? { since } : {}), ...(until ? { until } : {}) });
+    if (report.total.turns === 0) throw empty;
+    const path = writeReport(context, "audit", { since: since || null, total: summary(report.total), folders: report.folders.map((f) => ({ folder: f.folder, ...(f.name ? { name: f.name } : {}), ...summary(f) })) });
     const edits = editTurns(report.total);
     return {
       ok: true,
@@ -158,7 +192,7 @@ export const audit: Command = {
       ...summary(report.total),
       unverified_share: edits === 0 ? 0 : unverified(report.total) / edits,
       top: report.folders.slice(0, TOP).map((f) => ({ folder: f.folder, edit_turns: editTurns(f), verified: f.classes.verified, unverified: unverified(f), subagent_calls: f.subagent_calls })),
-      report: path,
+      ...(path ? { report: path } : {}),
       ...(report.unreadable ? { unreadable: report.unreadable } : {}),
       next_step: "The next-prompt cue is the Stop gate's weak hint, not a label. Reading the turns with Jev (to test whether unverified claims predict pushback) is a separate, opt-in step.",
     };

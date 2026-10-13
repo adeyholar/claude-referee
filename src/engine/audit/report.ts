@@ -4,7 +4,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { auditTurns, type TurnClass } from "./turns.ts";
+import { auditTurns, type AuditTurn, type TurnClass } from "./turns.ts";
 
 export const CLASSES: readonly TurnClass[] = ["no_edit", "verified", "unverified_ran_checks", "unverified_no_check"];
 
@@ -42,9 +42,14 @@ export interface Report {
   unreadable: number;
 }
 
-export interface AuditOptions {
-  readonly project?: string;
+export interface Window {
   readonly since?: string;
+  readonly until?: string;
+}
+
+export interface AuditOptions extends Window {
+  readonly project?: string;
+  readonly exclude?: string;
   readonly names?: boolean;
 }
 
@@ -82,9 +87,13 @@ export function isoWeek(ts: string): string {
   return `${year}-W${String(Math.ceil(((t.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7)).padStart(2, "0")}`;
 }
 
-export function tallySession(text: string, since = ""): Tally {
+const inWindow = (ts: string, w: Window): boolean => !(w.since || w.until) || (ts !== "" && (!w.since || ts >= w.since) && (!w.until || ts < w.until));
+
+export const tallySession = (text: string, since = ""): Tally => tallyTurns(auditTurns(text), { since });
+
+export function tallyTurns(all: readonly AuditTurn[], window: Window): Tally {
   const t = emptyTally();
-  const turns = auditTurns(text).filter((turn) => !since || turn.ts >= since);
+  const turns = all.filter((turn) => inWindow(turn.ts, window));
   if (turns.length === 0) return t;
   t.sessions = 1;
   t.turns = turns.length;
@@ -109,12 +118,12 @@ export function tallySession(text: string, since = ""): Tally {
   return t;
 }
 
-export function sessionFolders(root: string, project?: string): { folders: { name: string; files: string[] }[]; unreadable: number } {
+export function sessionFolders(root: string, project?: string, exclude?: string): { folders: { name: string; files: string[] }[]; unreadable: number } {
   const folders: { name: string; files: string[] }[] = [];
   let unreadable = 0;
   let names: string[] = [];
   try {
-    names = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && (!project || e.name.includes(project))).map((e) => e.name);
+    names = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && (!project || e.name.includes(project)) && !(exclude && e.name.includes(exclude))).map((e) => e.name);
   } catch {
     return { folders, unreadable };
   }
@@ -128,27 +137,32 @@ export function sessionFolders(root: string, project?: string): { folders: { nam
   return { folders, unreadable };
 }
 
-export function auditDir(root: string, options: AuditOptions = {}, read: (path: string) => string = (p) => readFileSync(p, "utf8")): Report {
-  const total = emptyTally();
-  const found = sessionFolders(root, options.project);
-  let unreadable = found.unreadable;
-  const folders: FolderTally[] = [];
+// One pass over the transcripts for several windows: each file is replayed once and its turns are tallied into every window, so a before/after split costs the same scan as one report.
+export function auditWindows(root: string, windows: readonly Window[], options: Omit<AuditOptions, keyof Window> = {}, read: (path: string) => string = (p) => readFileSync(p, "utf8")): Report[] {
+  const found = sessionFolders(root, options.project, options.exclude);
+  const reports: Report[] = windows.map(() => ({ total: emptyTally(), folders: [], unreadable: found.unreadable }));
   for (const { name, files } of found.folders) {
-    const tally = emptyTally();
+    const tallies = windows.map(() => emptyTally());
     for (const file of files) {
       try {
-        addTally(tally, tallySession(read(join(root, name, file)), options.since));
+        const turns = auditTurns(read(join(root, name, file)));
+        windows.forEach((w, i) => addTally(tallies[i] as Tally, tallyTurns(turns, w)));
       } catch {
-        unreadable += 1;
+        for (const r of reports) r.unreadable += 1;
       }
     }
-    if (tally.turns === 0) continue;
-    addTally(total, tally);
-    folders.push({ folder: folderHash(name), ...(options.names ? { name } : {}), ...tally });
+    tallies.forEach((tally, i) => {
+      const report = reports[i] as Report;
+      if (tally.turns === 0) return;
+      addTally(report.total, tally);
+      report.folders.push({ folder: folderHash(name), ...(options.names ? { name } : {}), ...tally });
+    });
   }
-  folders.sort((a, b) => editTurns(b) - editTurns(a));
-  return { total, folders, unreadable };
+  for (const r of reports) r.folders.sort((a, b) => editTurns(b) - editTurns(a));
+  return reports;
 }
+
+export const auditDir = (root: string, options: AuditOptions = {}, read?: (path: string) => string): Report => auditWindows(root, [{ ...(options.since ? { since: options.since } : {}), ...(options.until ? { until: options.until } : {}) }], options, read)[0] as Report;
 
 export const folderHash = (name: string): string => createHash("sha256").update(name).digest("hex").slice(0, 12);
 

@@ -68,6 +68,21 @@ Run once on this repository's own transcript folders with `--skip` set to the ma
 - The gate funnel on the 41 unverified turns: 7 claimed the work was done, 5 of those were not verified, a check applied to 3, and 3 would have been flagged. The raw unverified share of edit turns (0.77 machine-wide, 0.76 here) overstates what a reminder would say: most unverified turns did not claim to be finished or the change needed no check. `audit --ask` now prints this as `funnel`.
 - Verified share of edit turns by ISO week, all local folders: 2026-W37 3 of 8, W38 0 of 15, W39 5 of 54, W40 3 of 20, W41 48 of 179, W42 (to 10-12) 4 of 10. The session briefing with the done-check line is in use since 2026-10-09 (W41). W41's 179 edit turns are mostly this repository's own development, where checks are the habit, so the rise is not shown to be an effect of the briefing; split by folder before reading it (the file report has per-folder weeks). `audit` now prints the last eight weeks as `weeks`.
 
+## Step 3: before and after a change date, `audit --compare <ISO>` (registered 2026-10-13, local, no Jev)
+
+The question the product has to answer about itself: do edit turns end with a passing check more often after a change such as the session briefing. `--compare` splits the same transcripts at a date (`--since` and `--until` still bound the whole range, `--exclude <text>` drops folders whose name contains it), counts verified edit turns before and after, and repeats the count over the folders that have enough edit turns in both windows, so a change in which projects were worked on does not pass as an effect. Counts only; the file report keeps both windows' per-folder tallies.
+
+Choice of the build, Jev `decide` over three options (an audit tab in the dashboard, this, a subagent-report audit): first ask weak (this option 0.67, orders disagreed, receipt `rmv67rw8mm665`); after one added fact (a full scan takes 7.1 seconds over 3.1 GB, which makes a per-load dashboard tab slow) 0.77 with both orders agreeing (`rmv67sbkrayfi`). Below the 0.90 bar, so taken as the cheaper and reversible option, not as a clear verdict. The costs in the question were written by the assistant.
+
+### Bars (fixed before the first run)
+
+- **C1, power:** at least 30 edit turns in each window after `--exclude`. The paired set takes folders with at least 3 edit turns in each window and needs at least 2 such folders. Below C1 the verdict is `not_evaluable`.
+- **C2, signal:** `higher` when the verified share after is at least 0.10 above the share before, the one-sided Fisher exact p is below 0.05, and the paired set points the same way (its difference above 0). `lower` is the mirror image. Otherwise `no_signal`.
+- **C3, reading:** a `higher` is an association after a date, not an effect: nothing is randomised, habits drift, and the maintainer's own development in this repository is checked by habit. The measurement of the 0.2.7 session briefing is the run `--compare 2026-10-09T14:00:00Z --exclude claude-referee` on 2026-10-18 or later; earlier runs are smoke runs and update nothing.
+- **C4, cost and privacy:** local, no network, the output holds counts and folder hashes, never text.
+
+Smoke run on the maintainer's machine (2026-10-13, after the bars were written; by C3 it updates nothing): cut `2026-10-09T14:00:00Z`, this repository excluded: 200 edit turns before (41 verified), 25 after (9 verified); `not_evaluable` (C1: 25 is under 30), difference 0.15, p 0.07, paired set 2 folders 0.24 to 0.36. All folders: 259 before (56 verified), 31 after (11 verified), difference 0.13, p 0.07, `no_signal`. One scan took 7.5 seconds.
+
 ## Not in this decision
 
 A SubagentStop hook, a commit and PR rules guard and the dashboard tab were compared and not chosen first. The audit's per-turn units extend to subagent reports later (659 Agent calls are in the main transcripts).
