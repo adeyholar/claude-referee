@@ -41,7 +41,7 @@ If B3 holds, the Stop gate's `soft` wording gets a measured sentence (still neve
 
 ### Data scope
 
-This repository's own folders first. Other projects' transcripts contain employers' code and text; sending excerpts of them to the TypeSafe API needs the maintainer's explicit yes for each scope, and that yes has not been given.
+This repository's own folders first. Other projects' transcripts contain employers' code and text; sending excerpts of them to the TypeSafe API needs the maintainer's explicit yes for each scope. Update 2026-10-13: the maintainer said yes to all other local folders; the second run below used the same guard (dry run first, the payload re-checked against the private-terms file; `--skip` with that file plus patterns for IP addresses, ssh targets, credential assignments and e-mail addresses, which dropped whole turns).
 
 ### Amendments before the first request (2026-10-12)
 
@@ -67,6 +67,20 @@ Run once on this repository's own transcript folders with `--skip` set to the ma
 
 - The gate funnel on the 41 unverified turns: 7 claimed the work was done, 5 of those were not verified, a check applied to 3, and 3 would have been flagged. The raw unverified share of edit turns (0.77 machine-wide, 0.76 here) overstates what a reminder would say: most unverified turns did not claim to be finished or the change needed no check. `audit --ask` now prints this as `funnel`.
 - Verified share of edit turns by ISO week, all local folders: 2026-W37 3 of 8, W38 0 of 15, W39 5 of 54, W40 3 of 20, W41 48 of 179, W42 (to 10-12) 4 of 10. The session briefing with the done-check line is in use since 2026-10-09 (W41). W41's 179 edit turns are mostly this repository's own development, where checks are the habit, so the rise is not shown to be an effect of the briefing; split by folder before reading it (the file report has per-folder weeks). `audit` now prints the last eight weeks as `weeks`.
+
+## Result of step 2, second run (2026-10-13, all local folders pooled)
+
+Run once on every local transcript folder at once (`--project` matching all of them), after the maintainer's yes and the dry run above. 421 requests (326 sent, 95 answered from the cache of the first run), about 384,000 input tokens by the dry-run estimate (about 0.016 USD at the list price), receipt `rmv6h7nj1d5iv`, none failed or stopped, 29 turns dropped by `--skip`. The file holds counts and folder hashes only.
+
+- Population: 240 edit turns with a next prompt, 181 of them unverified and 59 verified.
+- Funnel on the 181 unverified turns: 19 claimed done, 14 of those not verified, a check applied to 7, 6 `would_block`. The gate would have spoken on 6 of 240 edit turns (2.5 percent).
+- Pushback at the 0.90 band: 0 yes, 149 no, 91 in between. **B2 (power): not met** (6 `would_block` and 0 pushback turns against 15 and 15); verdict `not_evaluable`. B1 has nothing to check, B3 is not defined (rate 0 in both groups), **B4 met** (421 requests, counts only, well under 5 USD).
+
+Exploratory, read after the run, not a bar and not a claim (n is small and the assistant that reads is of the same model family as the one that wrote the work):
+
+- The highest pushback score of the 240 is 0.87, so the band fixed in advance was never reached. Of the 15 highest-scoring next prompts, the assistant counts 6 to 9 as complaints or corrections about the previous work (the rest are follow-up requests or questions), so the question probably under-scores real pushback, as the one retry in the first run did. Changing the band now would be fitted to this data; a lower band would need data from after 2026-10-13.
+- The score itself shows no link to the gate's class: mean pushback score 0.15 after unverified turns and 0.17 after verified ones, share at or above 0.6 10 of 181 against 3 of 59, AUROC of unverified against verified 0.48 over 10,679 pairs.
+- The 6 turns the gate would have flagged, read against their final message and next prompt: 1 matches (the next prompt asks whether it was tested end to end), 3 have a final message that already says what was not tested or not verified, and 2 are unclear. If that holds on more data, a reminder after a message that names its own gap is redundant; this is an idea, not built, and would need its own registered test.
 
 ## Step 3: before and after a change date, `audit --compare <ISO>` (registered 2026-10-13, local, no Jev)
 
