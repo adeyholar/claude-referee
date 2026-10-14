@@ -14,9 +14,9 @@
     "facts": {}
   },
   "llms.txt": {
-    "sha256": "2f18013dc6b20d8d102330d988dd546e91448542c69ebcfa3551283f08e6e856",
+    "sha256": "4acbbf437e9f58674240fb12859a7befa8bac5866bb221398f08382c0abc8b4d",
     "facts": {
-      "links": 112,
+      "links": 113,
       "paths": [
         "agent-skill.md",
         "api.md",
@@ -45,6 +45,7 @@
         "cookbooks/sde_cascade.md",
         "cookbooks/semantic_find.md",
         "cookbooks/skill_suggestion.md",
+        "cookbooks/twitch_chat_filter.md",
         "demos.md",
         "demos/smart-home.md",
         "introduction.md",
