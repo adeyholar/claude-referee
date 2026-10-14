@@ -10,6 +10,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `audit --compare <ISO date>` (with `--until` and `--exclude <text>`): splits your edit turns at a date and compares the share that ended with a passing check before and after it, pooled and over the folders that have at least 3 edit turns in both windows, with a one-sided Fisher exact test. Verdict `not_evaluable` (under 30 edit turns in a window), `higher`, `lower` or `no_signal`; an association after a date, not an effect. Local only, one scan of the transcripts, counts and folder hashes only. The bars were registered before the first run in [audit-command.md](docs/decisions/audit-command.md); the build was chosen with Jev at 0.77, below the 0.90 bar, as the cheaper and reversible option (the option costs were written by the assistant).
 
+- `scripts/verify-release.mjs <version>`: after an npm publish, checks the registry tarball's sha512 against the integrity value the registry reports and compares every file in it byte for byte with the git tag's `npm/` folder (`--out <dir>` keeps the verified tarball for the GitHub release asset). Read-only; run against the real 0.2.7 package it found 17 of 17 files identical. It replaces the by-hand comparison noted in each release row.
+
 ### Changed
 
 - The CI size tripwire for `dist/cli.mjs` moved from 400000 to 450000 bytes: the bundle was 379,415 bytes before `audit` and 400,953 after it (about 21,500 bytes, the command, its study code and its `--describe` strings). The `hook.mjs` tripwire (200000; 168,984 bytes) is unchanged and does not include the audit code. Chosen with Jev (`decide` p 0.99, both orders agree; the option costs were written by the assistant).
