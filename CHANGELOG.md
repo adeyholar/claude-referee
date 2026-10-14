@@ -12,6 +12,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 - `scripts/verify-release.mjs <version>`: after an npm publish, checks the registry tarball's sha512 against the integrity value the registry reports and compares every file in it byte for byte with the git tag's `npm/` folder (`--out <dir>` keeps the verified tarball for the GitHub release asset). Read-only; run against the real 0.2.7 package it found 17 of 17 files identical. It replaces the by-hand comparison noted in each release row.
 
+- `scripts/check-ui-firefox.mjs <light|dark>` (maintainer tool, not shipped): starts the real `ui` server on synthetic data and drives headless Firefox over WebDriver BiDi, with no driver or dependency; 22 checks (tabs, labelling by key and click, excerpts shown as text, exports, 375 px, dark mode, console and CSP errors). Firefox 147.0.2 passed 22 of 22 in light and dark; a page that set an excerpt through `innerHTML` failed three of them. Firefox logs one console error for `/favicon.ico` because the CSP says `img-src 'none'`; it is counted, not failed, and the policy is unchanged. Record: [ui-second-engine.md](docs/decisions/ui-second-engine.md).
+
 ### Changed
 
 - The CI size tripwire for `dist/cli.mjs` moved from 400000 to 450000 bytes: the bundle was 379,415 bytes before `audit` and 400,953 after it (about 21,500 bytes, the command, its study code and its `--describe` strings). The `hook.mjs` tripwire (200000; 168,984 bytes) is unchanged and does not include the audit code. Chosen with Jev (`decide` p 0.99, both orders agree; the option costs were written by the assistant).

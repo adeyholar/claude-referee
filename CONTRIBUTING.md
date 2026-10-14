@@ -31,7 +31,7 @@ claude --plugin-dir plugins/claude-referee
 | `src/hooks/` | Hook entry points; v0.1 has the SessionStart briefing |
 | `plugins/claude-referee/` | What users install: the manifest, the committed bundle in `dist/`, `hooks/`, `skills/` and `packs/` |
 | `test/` | `node:test` suites; `test/fake-jev.ts` stands in for the API |
-| `scripts/` | The build and the private-terms check; maintainer tools such as `docs-watch.mjs`, `usage-report.mjs` (the four usage measures from your local data, counts only) and `verify-release.mjs <version>` (after a publish: the registry tarball's integrity and every file in it byte for byte against the git tag's `npm/` folder; exit 0 only when all match) |
+| `scripts/` | The build and the private-terms check; maintainer tools such as `docs-watch.mjs`, `usage-report.mjs` (the four usage measures from your local data, counts only) `check-ui-firefox.mjs <light|dark>` (the dashboard in headless Firefox over WebDriver BiDi, synthetic data; exit 0 only when every check passes) and `verify-release.mjs <version>` (after a publish: the registry tarball's integrity and every file in it byte for byte against the git tag's `npm/` folder; exit 0 only when all match) |
 | `assets/` | README, manifesto and social preview images, and the demo tape; see `assets/README.md` |
 
 ## The bundle is committed
