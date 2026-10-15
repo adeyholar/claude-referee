@@ -111,13 +111,13 @@ test("the briefing lists the single subdirectory's checks", async () => {
   assert.ok((await briefing(root)).includes("Checks here: cd server && npm run test (detected)."));
 });
 
-test("the briefing asks for the checks after editing, once, between the pipe example and the checks line, and stays within 700 characters", async () => {
+test("the briefing asks for done --run after edits, once, then the pipe form, then the checks line, and stays within 700 characters", async () => {
   const installed = "/Users/averageusername/.claude/plugins/cache/claude-referee/claude-referee/0.1.1";
-  const nudge = "After editing files, run the checks below this way before saying it is done.";
+  const nudge = "After edits, before saying done: node";
   for (const files of [{}, { "package.json": { scripts: { "test:integration": "x", "typecheck:strict": "x", "lint:all": "x", "check:all": "x" } }, "pnpm-lock.yaml": "" }]) {
     const text = await briefing(repo(files), installed);
     assert.equal(text.split(nudge).length - 1, 1);
-    assert.ok(text.indexOf(" done --criteria ") < text.indexOf(nudge) && text.indexOf(nudge) < text.indexOf("Checks here"));
+    assert.ok(text.indexOf(nudge) < text.indexOf(" done --criteria ") && text.indexOf(" done --run ") < text.indexOf(" done --criteria ") && text.indexOf(" done --criteria ") < text.indexOf("Checks here"));
     assert.ok(text.length <= 700 && text.endsWith("narrow the question."), String(text.length));
   }
 });

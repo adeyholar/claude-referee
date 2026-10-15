@@ -17,6 +17,8 @@ import type { Command } from "../types.ts";
 import { JEV_COST, JEV_EFFECTS, JEV_ERRORS, clip, jevCommand, list, openPack, question, readSource, reorder, str, stripAnsi, withData } from "../shared.ts";
 import { keepsEvidence, storeEvidence } from "../../engine/evidence.ts";
 import { resolveDataDir } from "../../engine/datadir.ts";
+import { detectCheckSet } from "../../engine/detect-checks.ts";
+import { DEFAULT_CRITERIA, pickCheck, runCheck } from "../../engine/run-check.ts";
 
 type Verdict = "met" | "unsure" | "missing";
 
@@ -182,6 +184,8 @@ export const done: Command = {
     summary: "Check whether piped test or lint output shows that each criterion holds.",
     inputs: {
       "--criteria <text>": "What must hold, e.g. \"all tests pass\". Repeat for several; max 10.",
+      "--run <check>": "Instead of piping evidence: run the project's detected check yourself and judge all of its output. Give a family (test, typecheck, lint, build, check, ci, verify) or the exact detected command; anything else is refused and nothing runs. The check runs in the manifest folder with stdout and stderr in order, no stdin and no TypeSafe key variables, and `exit code: N` is appended. Without --criteria the family sets one (all tests pass, lint is clean, the typecheck passes, the build succeeds, all checks pass). Exits 3 unless the verdict is met (an explicit --fail-on wins). With --dry-run the check still runs; nothing is sent. Not on Windows.",
+      "--timeout <seconds>": "With --run: kill the check after this many seconds (default 600, at most 3600); the evidence then ends in exit code 124, so nothing is met.",
       "--evidence <file|->": "The check output. '-' or omitted reads stdin. ANSI colours are stripped; long output keeps its first 2,000 and last 12,000 characters. Output from a recognised test runner, linter or type checker, or with an exit code line, is parsed in code and only those facts are sent; anything else is sent as text and can never count as met.",
     },
     outputs: {
@@ -189,6 +193,8 @@ export const done: Command = {
       trust: "parsed (a runner summary was recognised), exit_code (only an exit code line; the echoed command of a known check tool is sent with it) or unparsed (met is not possible)",
       exit_code: "The exit code read from the evidence, when it has one",
       evidence_lines: "How many lines the evidence has (a count; the receipt keeps it too)",
+      run: "With --run: true (the receipt keeps it, never the command)",
+      ran: "With --run: the detected command that ran",
       runners: "Parsed counts per recognised runner",
       reason: "exit_code_nonzero when the evidence has a non-zero exit code (missing, Jev not asked, requests 0; the receipt is still written, and --dry-run gives the same verdict); skipped_tests, no_tests_run, incomplete_run or warning_in_log when met was capped at unsure because tests were skipped, risky, incomplete or ended in an expected failure (a known issue), the log says no tests ran or shows only a build (or an oxlint run) for a test criterion, the parsed run is cut off, empty, cancelled, flaky or changed files, or a lint or clean criterion (one that says lint, clean or no warnings, or names a linter such as oxlint, eslint, ruff or phpstan) has a warning behind it (a parsed linter's warnings; warning or problem wording, or a swallowed exit code, in a log with only an exit code; or, when a test or build runner is parsed and no linter is, a linter's warning or error line, such as file:line:col: warning, or a linter summary with a count above 0); criterion_not_covered when the verdict is not met, no cap applies, and a lint, build or typecheck criterion has no parsed runner of that kind (only a test runner's summary was recognised, for example), so that check's output never reached Jev; it never changes the verdict",
       p: "Lowest probability that a criterion holds",
@@ -199,20 +205,49 @@ export const done: Command = {
     effects: JEV_EFFECTS,
     cost: JEV_COST,
   },
-  options: { criteria: { type: "string", multiple: true }, evidence: { type: "string" } },
+  options: { criteria: { type: "string", multiple: true }, evidence: { type: "string" }, run: { type: "string" }, timeout: { type: "string" } },
+  defaultFailOn: (context) => (typeof context.values["run"] === "string" ? ["missing", "unsure"] : []),
   async run(context) {
-    const criteria = list(context, "criteria").map((c) => c.trim()).filter(Boolean);
-    if (criteria.length === 0) throw new RefereeError("bad_input", "Give at least one --criteria.", { next_step: 'Example: --criteria "all tests pass"' });
-    if (criteria.length > 10) throw new RefereeError("bad_input", "At most 10 criteria per call.");
-    const evidence = doneEvidence(await readSource(context, str(context, "evidence"), "evidence"));
-    if (!evidence.trim()) throw new RefereeError("bad_input", "The evidence is empty.");
+    const { io } = context;
+    const given = list(context, "criteria").map((c) => c.trim()).filter(Boolean);
+    const spec = str(context, "run");
     const { pack, project } = openPack(context);
-    const { planned, finish } = doneRequest(pack, project?.thresholds, criteria, evidence);
+    let criteria = given;
+    let evidence: string;
+    let ran: string | undefined;
+    if (spec !== undefined) {
+      if (str(context, "evidence") !== undefined) throw new RefereeError("bad_input", "--run and --evidence exclude each other.", { next_step: "Use --run to let done run the check, or --evidence to pass output you already have." });
+      if (io.platform === "win32") throw new RefereeError("bad_input", "--run needs sh and is not available on Windows.", { next_step: "Pipe the check's output instead." });
+      const seconds = str(context, "timeout") === undefined ? 600 : Number(str(context, "timeout"));
+      if (!Number.isFinite(seconds) || seconds < 1 || seconds > 3600) throw new RefereeError("bad_input", "--timeout is a number of seconds from 1 to 3600.");
+      const set = detectCheckSet(io.cwd, project?.root ?? io.cwd);
+      const check = pickCheck(spec, set);
+      ran = check.command;
+      if (criteria.length === 0) criteria = [DEFAULT_CRITERIA[check.family] ?? "all checks pass"];
+      const result = await runCheck(check.command, set?.dir ?? io.cwd, io.env, seconds * 1000);
+      evidence = doneEvidence(`$ ${check.command}\n${result.output.trimEnd()}\n${result.timedOut ? `[claude-referee] timed out after ${seconds}s\n` : ""}exit code: ${result.code}\n`);
+    } else {
+      if (criteria.length === 0) throw new RefereeError("bad_input", "Give at least one --criteria.", { next_step: 'Example: --criteria "all tests pass"' });
+      evidence = doneEvidence(await readSource(context, str(context, "evidence"), "evidence"));
+    }
+    if (criteria.length > 10) throw new RefereeError("bad_input", "At most 10 criteria per call.");
+    if (!evidence.trim()) throw new RefereeError("bad_input", "The evidence is empty.");
+    const request = doneRequest(pack, project?.thresholds, criteria, evidence);
+    const { planned } = request;
+    const RUN_NEXT = "done ran the check and judged all of its output. Fix what the output shows, or narrow --criteria, and run done --run again; the same output gives the same answer.";
+    const finish =
+      ran === undefined
+        ? request.finish
+        : (outcomes: Outcome[]) => {
+            const result = request.finish(outcomes);
+            const asks = typeof result["next_step"] === "string" && result["reason"] === undefined;
+            return { ...result, ...(asks ? { next_step: RUN_NEXT } : {}), run: true, ran };
+          };
     if (planned.length === 0 && context.flags.dryRun) return reorder({ ...finish([]), dry_run: true, requests: 0 });
     const result = await jevCommand(context, "done", pack, planned, finish);
     const receipt = result["receipt"];
-    if (planned.length > 0 && keepsEvidence(context.io.env) && typeof receipt === "string") {
-      storeEvidence(resolveDataDir(context.io.env, context.io.home, context.io.cwd, context.flags.dataDir), receipt, { criteria, evidence, home: context.io.home, extra: pack.redact, now: context.io.now() });
+    if (planned.length > 0 && keepsEvidence(io.env) && typeof receipt === "string") {
+      storeEvidence(resolveDataDir(io.env, io.home, io.cwd, context.flags.dataDir), receipt, { criteria, evidence, home: io.home, extra: pack.redact, now: io.now() });
     }
     return result;
   },

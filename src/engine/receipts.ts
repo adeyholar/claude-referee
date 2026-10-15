@@ -58,6 +58,7 @@ export interface ReceiptOutcome {
   readonly yes?: number;
   readonly no?: number;
   readonly review?: number;
+  readonly run?: boolean;
 }
 
 export const REASON_CODE = /^[a-z][a-z0-9_]{0,39}$/;
@@ -84,6 +85,7 @@ export function outcomeOf(result: Readonly<Record<string, unknown>>): ReceiptOut
   if (isNumber(p)) out["p"] = round(p);
   if (Number.isInteger(exitCode)) out["exit_code"] = exitCode;
   if (isCount(result["evidence_lines"])) out["evidence_lines"] = result["evidence_lines"];
+  if (result["run"] === true) out["run"] = true;
   if (Array.isArray(runners)) {
     const names = [...new Set(runners.map((r) => (isRecord(r) ? r["runner"] : undefined)).filter((n): n is string => typeof n === "string" && RUNNER_NAME.test(n)))];
     if (names.length) out["runners"] = names.slice(0, RUNNERS_MAX);

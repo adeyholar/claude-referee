@@ -37,6 +37,7 @@ export function measures({ receipts, stops, labels, since, until = Infinity, exc
   const done = receipts.filter((r) => r.command === "done" && at(r));
   const exitOnly = done.filter((r) => r.verdict === "missing" && r.outcome?.trust === "exit_code");
   const lines = (r) => r.outcome?.evidence_lines;
+  const metOf = (rs) => share(rs.filter((r) => r.verdict === "met").length, rs.length);
   const verdicts = new Map(receipts.filter((r) => r.command === "done").map((r) => [r.id, r.verdict ?? "none"]));
   const byVerdict = {};
   for (const l of labels) {
@@ -55,6 +56,7 @@ export function measures({ receipts, stops, labels, since, until = Infinity, exc
       evidence_lines_unknown: exitOnly.filter((r) => lines(r) === undefined).length,
     },
     labels: byVerdict,
+    done_met_by_run: { run: metOf(done.filter((r) => r.outcome?.run === true)), piped: metOf(done.filter((r) => r.outcome?.run !== true)) },
     excluded_by_pack: byPack.size,
   };
 }

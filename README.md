@@ -223,7 +223,10 @@ If `doctor` works but Claude sees no briefing, Claude Code probably can't find N
 ### Try it
 
 ```sh
-# Is it done? Pipe the check output straight in, so Claude never has to read it.
+# Is it done? Let claude-referee run the project's own check (test, lint, typecheck, build or check, as your package.json or composer.json defines it) and judge all of its output. Exits 3 unless the verdict is met.
+npx claude-referee done --run test
+
+# Or pipe the output of any other check straight in, so Claude never has to read it.
 npm test 2>&1 | npx claude-referee done --criteria "all tests pass" --evidence -
 
 # Run one yes/no rule over many items: here, every added line of a diff.
@@ -260,7 +263,7 @@ npx claude-referee ui
 Each command prints one line of JSON: `ok`, the verdict, a few numbers, a `next_step` when there is one, and, for the commands that ask Jev, a receipt ID. Every verdict exits 0, including "not done"; in CI, `--fail-on missing,unsure` exits 3 on those verdicts. `--describe` (or `--help`, `-h`) after a command prints its full contract, and `claude-referee --describe` lists the commands as JSON. An unknown option names the closest valid one when that is at most two edits away and the typed option has more characters than edits.
 
 > [!TIP]
-> **Make the evidence explicit.** A check that prints nothing on success shows nothing. While building claude-referee, the referee answered `missing` (0.46) to "typecheck passes" because `tsc` printed no output; adding the exit code turned it into `met` (0.97). (Measured once, 2026-09-30.) That was one command. On real CI logs where the evidence was only an exit code, `done` answered `met` for none of 67 passing steps: with an exit code alone, a passing step came back `unsure` (34) or `missing` (33), never `met`. Pipe the runner's own summary when you can. When the log has only an exit code, up to three echoed command lines of a known check tool (`$ tsc --noEmit`, `> eslint .`) are sent with it, so Jev knows what ran. In real use on the maintainer's machine (other projects, aggregate counts only), `met` came from an exit code alone 71 times against 43 from a parsed runner, and 64 of those 71 had every criterion worded as an exit status. Such a `met` proves only the exit status, so word the criterion as what the output must show. Take the exit line from `$?` (after a pipe, `$pipestatus[1]` in zsh or `${PIPESTATUS[0]}` in bash), never type it, and run separate checks as separate `done` calls.
+> **Make the evidence explicit.** `done --run <check>` does it for you: the whole output and the check's own exit code. When you pipe instead, a check that prints nothing on success shows nothing. While building claude-referee, the referee answered `missing` (0.46) to "typecheck passes" because `tsc` printed no output; adding the exit code turned it into `met` (0.97). (Measured once, 2026-09-30.) That was one command. On real CI logs where the evidence was only an exit code, `done` answered `met` for none of 67 passing steps: with an exit code alone, a passing step came back `unsure` (34) or `missing` (33), never `met`. Pipe the runner's own summary when you can. When the log has only an exit code, up to three echoed command lines of a known check tool (`$ tsc --noEmit`, `> eslint .`) are sent with it, so Jev knows what ran. In real use on the maintainer's machine (other projects, aggregate counts only), `met` came from an exit code alone 71 times against 43 from a parsed runner, and 64 of those 71 had every criterion worded as an exit status. Such a `met` proves only the exit status, so word the criterion as what the output must show. Take the exit line from `$?` (after a pipe, `$pipestatus[1]` in zsh or `${PIPESTATUS[0]}` in bash), never type it, and run separate checks as separate `done` calls.
 > ```sh
 > { npx tsc --noEmit; echo "tsc exit code: $?"; } 2>&1 | npx claude-referee done --criteria "typecheck passes" --evidence -
 > ```

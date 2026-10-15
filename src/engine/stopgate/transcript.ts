@@ -53,6 +53,7 @@ interface Entry {
 interface Pending {
   cmd: string;
   silent: boolean;
+  run: boolean;
   seq: number;
   status: CheckStatus;
   truncated: boolean;
@@ -151,13 +152,15 @@ const withoutRedirects = (args: readonly string[]): string[] => {
 const asksInfo = (args: readonly string[], extra: readonly string[] = []): boolean => args.some((a) => INFO_FLAGS.has(a) || extra.includes(a));
 
 // Returns null when the segment is not a check, else whether the check prints nothing on success.
-function checkKind(segment: readonly string[]): { silent: boolean } | null {
+function checkKind(segment: readonly string[]): { silent: boolean; run?: boolean } | null {
   let i = 0;
   while (i < segment.length && (ASSIGNMENT.test(segment[i] ?? "") || WRAPPERS.has(segment[i] ?? ""))) i++;
   const first = segment[i];
   if (!first) return null;
   const name = base(first);
   const args = segment.slice(i + 1);
+  const referee = name === "claude-referee" || (name === "node" && !args.includes("--test") && args.some((a) => base(a) === "cli.mjs"));
+  if (referee) return args.includes("done") && args.some((a) => a === "--run" || a.startsWith("--run=")) ? { silent: false, run: true } : null;
   const direct = (tool: string, rest: readonly string[]): { silent: boolean } | null => {
     if (tool === "tsc" || tool === "eslint") return { silent: true };
     if (tool === "vue-tsc") return asksInfo(rest, ["-v"]) ? null : { silent: true };
@@ -223,10 +226,10 @@ function checkKind(segment: readonly string[]): { silent: boolean } | null {
   return direct(name, args);
 }
 
-function analyzeCommand(command: string): { silent: boolean; cmd: string } | null {
+function analyzeCommand(command: string): { silent: boolean; cmd: string; run: boolean } | null {
   const plain = withoutHeredocs(command);
   const tokens = tokenize(plain);
-  let found: { silent: boolean } | null = null;
+  let found: { silent: boolean; run?: boolean } | null = null;
   let segment: Token[] = [];
   let before = "";
   let cmd = "";
@@ -237,7 +240,7 @@ function analyzeCommand(command: string): { silent: boolean; cmd: string } | nul
     }
     const kind = checkKind(segment.map((t) => t.text));
     if (kind) {
-      found = found ? { silent: found.silent && kind.silent } : kind;
+      found = found ? { silent: found.silent && kind.silent, run: found.run === true && kind.run === true } : kind;
       if (cmd.length < JOINED_MAX) {
         const first = segment.find((t) => t.text !== "{");
         const text = plain.slice(first?.start ?? 0, segment.at(-1)?.end ?? 0).slice(0, CMD_MAX);
@@ -249,7 +252,7 @@ function analyzeCommand(command: string): { silent: boolean; cmd: string } | nul
   }
   if (!found) return null;
   const masked = tokens.some((t) => t.text === "|" || t.text === "||" || t.text === "|&" || t.text === ";");
-  return { silent: found.silent && !masked, cmd: cmd.slice(0, JOINED_MAX) };
+  return { silent: found.silent && !masked, cmd: cmd.slice(0, JOINED_MAX), run: found.run === true };
 }
 
 function textOf(content: unknown): string {
@@ -416,6 +419,14 @@ function statusOf(full: string, isError: boolean, silent: boolean, denialKind?: 
   return { status: truncated && status === "passed" ? "unknown" : status, truncated };
 }
 
+// `claude-referee done --run` exits 3 unless its verdict is met, so a call that ran clean and says met is a passing check.
+function runStatus(full: string, isError: boolean, denialKind?: unknown): { status: CheckStatus; truncated: boolean } {
+  if (isDenied(full, isError, denialKind)) return { status: "denied", truncated: false };
+  if (isError) return { status: "failed", truncated: false };
+  const verdict = /"verdict":"(met|unsure|missing)"/.exec(full)?.[1];
+  return { status: verdict === "met" ? "passed" : verdict ? "failed" : "unknown", truncated: false };
+}
+
 function rawStatus(text: string, isError: boolean, silent: boolean): CheckStatus {
   const ev = parseEvidence(text);
   const bad = ev.runners.some((r) => r.failed + r.errors > 0);
@@ -461,7 +472,7 @@ function scanTurn(text: string, from: number, to: number): Scan {
         if (edit) edit.rejected = editRejected(fullResultText(block.content), block.is_error === true, entry.toolDenialKind);
         const call = byId.get(useId);
         if (!call) continue;
-        const result = statusOf(fullResultText(block.content), block.is_error === true, call.silent, entry.toolDenialKind);
+        const result = call.run ? runStatus(fullResultText(block.content), block.is_error === true, entry.toolDenialKind) : statusOf(fullResultText(block.content), block.is_error === true, call.silent, entry.toolDenialKind);
         call.status = result.status;
         call.truncated = result.truncated;
       }
@@ -495,7 +506,7 @@ function scanTurn(text: string, from: number, to: number): Scan {
       } else if (block.name === "Bash" && typeof block.input?.command === "string") {
         const kind = analyzeCommand(block.input.command);
         if (!kind) continue;
-        const call: Pending = { cmd: kind.cmd, silent: kind.silent, seq: seq++, status: "unknown", truncated: false };
+        const call: Pending = { cmd: kind.cmd, silent: kind.silent, run: kind.run, seq: seq++, status: "unknown", truncated: false };
         out.calls.push(call);
         if (id) byId.set(id, call);
       }

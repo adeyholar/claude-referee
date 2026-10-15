@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 step() { printf '\n== %s\n' "$1"; }
 
 fakehome="$(mktemp -d)"
-clean_env() { env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD -u REFEREE_DATA_DIR HOME="$fakehome" "$@"; }
+clean_env() { env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD -u REFEREE_DATA_DIR -u REFEREE_MODEL -u TYPESAFE_MODEL HOME="$fakehome" "$@"; }
 
 step "typecheck"; npm run typecheck --silent
 step "tests without a key, under a foreign HOME"; clean_env npm test --silent 2>&1 | grep -E "^ℹ (tests|pass|fail)"; test "${PIPESTATUS[0]}" -eq 0
@@ -34,11 +34,11 @@ for c in done decide judge claims verify receipts doctor eval; do
 done
 echo 'not json' | clean_env "$nmin" "$tmp/claude-referee/dist/hook.mjs" session-start
 echo '{}' | clean_env "$nmin" "$tmp/claude-referee/dist/hook.mjs" stop
-env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD HOME=/home/runner "$nmin" plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-120
+env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD -u REFEREE_MODEL -u TYPESAFE_MODEL HOME=/home/runner "$nmin" plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-120
 test "$(wc -c < "$tmp/claude-referee/dist/hook.mjs")" -lt 200000
 
 step "recorded evals score offline with CI's HOME"
-env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD HOME=/home/runner node plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-200
+env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD -u REFEREE_MODEL -u TYPESAFE_MODEL HOME=/home/runner node plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-200
 
 step "plugin validation"
 node scripts/validate-plugin.mjs

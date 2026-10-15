@@ -2,7 +2,7 @@
 
 export interface Share { k: number; n: number; share: number | null }
 export function measures(input: {
-  receipts: { id: string; ts: string; command: string; verdict?: string; session_id?: string; pack?: string; outcome?: { trust?: string; evidence_lines?: number } }[];
+  receipts: { id: string; ts: string; command: string; verdict?: string; session_id?: string; pack?: string; outcome?: { trust?: string; evidence_lines?: number; run?: boolean } }[];
   stops: { ts: string; session_id?: string; turn?: string; edits?: number; checks?: number }[];
   labels: { id: string; label: "right" | "wrong" }[];
   since: number;
@@ -14,5 +14,6 @@ export function measures(input: {
   reask_cleared: Share;
   exit_only_missing: Share & { evidence_lines_under_5: number; evidence_lines_5_or_more: number; evidence_lines_unknown: number };
   labels: Record<string, { right: number; wrong: number }>;
+  done_met_by_run: { run: Share; piped: Share };
   excluded_by_pack: number;
 };

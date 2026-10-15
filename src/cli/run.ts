@@ -218,7 +218,8 @@ export async function run(argv: readonly string[], io: Io, commands: readonly Co
     const detailsDir = flags.dryRun ? null : join(resolveDataDir(io.env, io.home, io.cwd, flags.dataDir), "results");
     io.write(render(result, { pretty, detailsDir, receipt }) + "\n");
     const verdict = result["verdict"];
-    return typeof verdict === "string" && flags.failOn.includes(verdict) ? 3 : 0;
+    const failOn = flags.failOn.length > 0 ? flags.failOn : (command.defaultFailOn?.(context) ?? []);
+    return typeof verdict === "string" && failOn.includes(verdict) ? 3 : 0;
   } catch (error) {
     const known = isRefereeError(error) ? error : new RefereeError("internal", error instanceof Error ? error.message : String(error));
     io.write(renderError(known, pretty) + "\n");

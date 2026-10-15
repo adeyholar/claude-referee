@@ -1,5 +1,6 @@
 // Names up to 4 check commands from the nearest manifest (package.json, composer.json, Cargo.toml, go.mod); reads script names only.
-// Used by the SessionStart briefing when no area lists checks. Any read or parse error means "no checks".
+// Used by the SessionStart briefing when no area lists checks, and by `done --run`, which runs only what is found here: a script name outside SAFE is dropped.
+// Any read or parse error means "no checks".
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -7,6 +8,7 @@ import { dirname, join } from "node:path";
 const FAMILIES = ["test", "typecheck", "lint", "check", "build", "ci", "verify"] as const;
 export const DETECTED_MAX = 4;
 const JOINED_MAX = 80;
+const SAFE = /^[A-Za-z0-9:._-]+$/;
 
 function scripts(file: string): string[] {
   try {
@@ -18,7 +20,8 @@ function scripts(file: string): string[] {
 }
 
 function pick(names: readonly string[], family: string): string | undefined {
-  return names.includes(family) ? family : names.filter((n) => n.startsWith(`${family}:`)).sort()[0];
+  const safe = names.filter((n) => SAFE.test(n));
+  return safe.includes(family) ? family : safe.filter((n) => n.startsWith(`${family}:`)).sort()[0];
 }
 
 function runner(dir: string): string {
@@ -44,7 +47,13 @@ function manifestDir(cwd: string, root: string): string | null {
   }
 }
 
-function checksIn(dir: string): string[] {
+export interface Check {
+  readonly family: string;
+  readonly command: string;
+  readonly runnable: boolean;
+}
+
+function checksIn(dir: string): Check[] {
   const found = new Map<string, string>();
   const composer = scripts(join(dir, "composer.json"));
   const npm = scripts(join(dir, "package.json"));
@@ -57,11 +66,11 @@ function checksIn(dir: string): string[] {
     else if (family === "test" && existsSync(join(dir, "Cargo.toml"))) found.set(family, "cargo test");
     else if (family === "test" && existsSync(join(dir, "go.mod"))) found.set(family, "go test ./...");
   }
-  return FAMILIES.flatMap((f) => found.get(f) ?? []);
+  return FAMILIES.flatMap((family) => (found.has(family) ? [{ family, command: found.get(family) as string, runnable: true }] : []));
 }
 
 // Only when exactly one immediate subdirectory of the root has checks; several would mean guessing the subproject.
-function onlySubdir(root: string): { name: string; commands: string[] } | null {
+function onlySubdir(root: string): { name: string; checks: Check[] } | null {
   const isDir = (d: string): boolean => {
     try {
       return statSync(join(root, d)).isDirectory();
@@ -75,21 +84,26 @@ function onlySubdir(root: string): { name: string; commands: string[] } | null {
   } catch {
     return null;
   }
-  const hits = names.map((name) => ({ name, commands: checksIn(join(root, name)) })).filter((h) => h.commands.length > 0);
+  const hits = names.map((name) => ({ name, checks: checksIn(join(root, name)) })).filter((h) => h.checks.length > 0);
   return hits.length === 1 ? (hits[0] ?? null) : null;
 }
 
-export function detectChecks(cwd: string, root: string): string[] {
+// The checks `done --run` may run (those with runnable true), with the folder to run them in (the manifest's, or the root for a single checked subfolder).
+export function detectCheckSet(cwd: string, root: string): { dir: string; checks: Check[] } | null {
   const dir = manifestDir(cwd, root);
-  let commands: string[];
-  if (dir) commands = checksIn(dir);
-  else {
-    const sub = onlySubdir(root);
-    const cd = sub ? (/^[\w.-]+$/.test(sub.name) ? sub.name : JSON.stringify(sub.name)) : "";
-    commands = sub ? sub.commands.map((c) => `cd ${cd} && ${c}`) : [];
+  if (dir) {
+    const checks = checksIn(dir);
+    return checks.length > 0 ? { dir, checks } : null;
   }
+  const sub = onlySubdir(root);
+  if (!sub) return null;
+  const plain = /^[\w.-]+$/.test(sub.name);
+  return { dir: root, checks: sub.checks.map((c) => ({ family: c.family, command: `cd ${plain ? sub.name : JSON.stringify(sub.name)} && ${c.command}`, runnable: plain })) };
+}
+
+export function detectChecks(cwd: string, root: string): string[] {
   const out: string[] = [];
-  for (const command of commands) {
+  for (const { command } of detectCheckSet(cwd, root)?.checks ?? []) {
     if (out.length === DETECTED_MAX || [...out, command].join("; ").length > JOINED_MAX) break;
     out.push(command);
   }

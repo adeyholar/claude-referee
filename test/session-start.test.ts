@@ -71,10 +71,13 @@ test("session-start briefing's pipe example runs as written", async () => {
   const text = (JSON.parse(out ?? "{}") as { hookSpecificOutput: { additionalContext: string } }).hookSpecificOutput.additionalContext;
   const line = text.split("\n").find((l) => l.includes(" done --criteria "));
   assert.ok(line);
+  const cli = /node "[^"]+"/.exec(text)?.[0];
+  assert.ok(cli, "the first line names the CLI once; the pipe line says <same CLI>");
   const command = line
-    .slice(line.indexOf("<check>"))
+    .slice(line.indexOf("<check>"), line.indexOf(" (whole output"))
     .replace("<check>", "echo 'Tests: 3 passed, 3 total'")
-    .replace("<what must hold>", "all tests pass");
+    .replace("<same CLI>", cli)
+    .replace("<one claim>", "all tests pass");
   const result = execFileSync("bash", ["-c", `${command} --dry-run`], { cwd: root, encoding: "utf8", env: { ...process.env, REFEREE_DATA_DIR: tempDir() } });
   assert.equal((JSON.parse(result) as { verdict: string }).verdict, "would_send");
 });

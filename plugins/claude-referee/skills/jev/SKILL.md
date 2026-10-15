@@ -9,7 +9,7 @@ The CLI is `node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" <command>`. Every command 
 
 ## When Jev pays off
 
-- A check ran and its output decides whether the task is done. Pipe the output to `done` without reading it first.
+- A check decides whether the task is done. Let `done --run` run it, or pipe its whole output to `done` without reading it first.
 - A choice between 2-6 options whose facts live in files. `decide` reads the files itself.
 - One yes/no rule over many items. In the cost model this pays off from about 20 items that aren't in context yet, or about 50 that are (modelled, not measured).
 - A single small judgement about text already in context doesn't pay off. Decide it yourself.
@@ -17,8 +17,20 @@ The CLI is `node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" <command>`. Every command 
 ## Calls
 
 ```bash
+node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" done --run test
+```
+
+`--run` takes a family (test, typecheck, lint, build, check, ci, verify) or the exact command the project's manifest defines, runs it in the manifest folder and judges all of its output; it refuses anything else, exits 3 unless the verdict is `met`, and without `--criteria` asks the family's question. Prefer it to piping. Pipe only for a check it does not list:
+
+```bash
 npm test 2>&1 | node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" done --criteria "all tests pass" --evidence -
 ```
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" look --image after-save.png --criteria "a green confirmation that the changes were saved is visible"
+```
+
+`look` is experimental: PNG or JPEG, 256 to 1568 px a side, and the image goes to TypeSafe unredacted, so send only what the check needs.
 
 ```bash
 node "${CLAUDE_PLUGIN_ROOT}/dist/cli.mjs" decide <<'EOF_JSON'

@@ -84,6 +84,8 @@ test("every key a command prints is named in its --describe contract", async () 
     await call([...done, "--dry-run"], { stdin: "Tests: 12 passed, 12 total\n" });
     await call(done, { stdin: "Tests: 12 passed, 12 total\n", env: { REFEREE_DATA_DIR: dataDir } });
     await call(done, { stdin: "RATE-ME, no runner summary\n" });
+    writeFileSync(join(cwd, "package.json"), JSON.stringify({ scripts: { test: "node -e \"console.log('Tests: 3 passed, 3 total')\"" } }));
+    await call(["done", "--run", "test"], { env: { ...keyed, PATH: process.env["PATH"] ?? "" } });
 
     writeFileSync(join(cwd, "shot.png"), pngHeader(800, 600));
     await call(["look", "--image", "shot.png", "--criteria", "a banner is visible", "--criteria", "a menu is visible"]);

@@ -46,6 +46,7 @@ export interface Context {
 
 export interface Command {
   readonly name: string;
+  readonly defaultFailOn?: (context: Context) => readonly string[];
   readonly describe: Describe;
   readonly options: ParseArgsOptionsConfig;
   asksJev?(context: Context): boolean;

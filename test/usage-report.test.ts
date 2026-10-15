@@ -72,3 +72,9 @@ test("a pack exclusion drops every session that wrote a receipt under that pack,
   assert.deepEqual([clean.reask_cleared, clean.edit_turns_with_check, clean.excluded_by_pack], [{ k: 2, n: 2, share: 1 }, { k: 1, n: 1, share: 1 }, 1]);
   assert.deepEqual(measures({ receipts, stops, labels: [], since, until: Date.parse(T(2)), excludePacks: ["voice"] }).reask_cleared, { k: 1, n: 1, share: 1 });
 });
+
+test("done calls split by whether the CLI ran the check (outcome.run) or the evidence was piped, as met over all done receipts", () => {
+  const done = (id: string, verdict: string, run?: boolean) => ({ id, ts: T(1), command: "done", verdict, outcome: { trust: "parsed", ...(run ? { run } : {}) } });
+  const receipts = [done("1", "met", true), done("2", "missing", true), done("3", "met", true), done("4", "met"), done("5", "missing"), done("6", "unsure")];
+  assert.deepEqual(measures({ receipts, stops: [], labels: [], since }).done_met_by_run, { run: { k: 2, n: 3, share: 0.667 }, piped: { k: 1, n: 3, share: 0.333 } });
+});
