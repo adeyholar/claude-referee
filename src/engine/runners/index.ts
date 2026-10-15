@@ -11,6 +11,7 @@ import { parsers as more } from "./more.ts";
 import { parsers as moreTools } from "./more-tools.ts";
 import { parsers as native } from "./native.ts";
 import { parsers as oxlint } from "./oxlint.ts";
+import { parsers as phpAgent } from "./php-agent.ts";
 import { parsers as phpRuby } from "./php-ruby.ts";
 import { parsers as python } from "./python.ts";
 import { parsers as scenarios } from "./scenarios.ts";
@@ -33,7 +34,7 @@ export interface ParsedEvidence {
   readonly lines: number;
 }
 
-const PARSERS: readonly RunnerParser[] = [...python, ...js, ...compiled, ...phpRuby, ...more, ...suites, ...scenarios, ...builds, ...native, ...moreTools, ...bun, ...oxlint, ...silent];
+const PARSERS: readonly RunnerParser[] = [...python, ...js, ...compiled, ...phpRuby, ...more, ...suites, ...scenarios, ...builds, ...native, ...moreTools, ...bun, ...oxlint, ...silent, ...phpAgent];
 
 
 const HALTED = /^##\[error\](?:The operation was canceled\.|The job (?:running on runner .+ )?has exceeded the maximum execution time|The runner has received a shutdown signal)/m;
