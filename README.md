@@ -204,7 +204,7 @@ On Windows the key is a user environment variable (`HKCU\Environment`), not a cr
 
 On macOS or Linux you can also just set `TYPESAFE_API_KEY`. `/plugin configure claude-referee` (or `claude plugin configure claude-referee --values-stdin`, Claude Code 2.1.285+) also stores the key, but Claude Code passes plugin secrets to hooks only, not to the shell. The full lookup order is in [configuration](docs/configuration.md#the-api-key).
 
-**3. Turn it on for a project** by committing `.claude/referee.json`. Without this file, the referee stays silent:
+**3. Turn it on for a project** by committing `.claude/referee.json`. Without this file, the referee stays silent (unless you set `REFEREE_DEFAULT_PROJECT=shadow`, which turns the briefing and the shadow-mode done-gate on in every git repository you open; that sends gate excerpts from all of them, see [configuration](docs/configuration.md)):
 
 ```json
 { "pack": "generic", "areas": [{ "prefix": "", "checks": ["npm test"] }] }

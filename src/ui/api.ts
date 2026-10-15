@@ -112,7 +112,7 @@ export function overview(ctx: UiContext) {
   const stats = stopStats(stops);
   let current = 0.7;
   try {
-    const config = loadProject(ctx.cwd);
+    const config = loadProject(ctx.cwd, ctx.env);
     if (config) current = threshold(loadPack(config.pack, packDirs(ctx.env)), config.thresholds, "stop.gate", "claims_done", 0.7);
   } catch {
     void 0;

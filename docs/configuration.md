@@ -106,6 +106,7 @@ claude-referee trims the key and rejects it with a configuration error if it con
 | `TYPESAFE_BASE_URL` | The API root, `https://api.typesafe.ai` by default. For proxies and tests |
 | `REFEREE_BASE_URL_KEY` | The key for a `TYPESAFE_BASE_URL` that isn't `https://api.typesafe.ai`. Without it no request is sent: the TypeSafe key never goes to another host |
 | `REFEREE_HOOKS=off` | Turns every hook off |
+| `REFEREE_DEFAULT_PROJECT` | `shadow` or `soft`: a git repository with no `.claude/referee.json` gets the generic pack, the briefing and that stop-gate mode (a project file always wins; `"stopGate": "off"` in one opts that repository out). The done-gate then sends excerpts of your prompt and Claude's last message from every repository you open: see [the decision](decisions/default-project.md) |
 | `CLAUDE_CODE_SESSION_ID` | Set by Claude Code for the commands it runs, never by claude-referee. A CLI receipt records it as `session_id` when it is 1 to 64 letters, digits, `.`, `_` or `-`, and `receipts --session current` reads it |
 | `REFEREE_DATA_DIR`, `REFEREE_PACKS_DIR`, `REFEREE_PACK`, `REFEREE_MODEL` | Set for you. The session briefing hook exports them to Claude's shell through `CLAUDE_ENV_FILE`, so the commands Claude runs use the same data directory, pack and `model` setting as the hooks. `TYPESAFE_MODEL` still wins over `REFEREE_MODEL`. It never exports the key |
 

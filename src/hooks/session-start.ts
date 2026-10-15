@@ -41,7 +41,7 @@ export async function sessionStart(io: HookIo, pluginRoot: string): Promise<stri
   }
   if (typeof input?.cwd !== "string") return null;
   const cwd = input.cwd;
-  const project = loadProject(cwd);
+  const project = loadProject(cwd, env);
   if (!project?.hooks.sessionStart) return null;
 
   const dirs = packDirs(env);

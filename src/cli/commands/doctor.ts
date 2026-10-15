@@ -53,7 +53,7 @@ export const doctor: Command = {
       data_dir: "The data directory, with ~ for home",
       data_bytes: "Size of the data directory in bytes",
       packs: "Installed packs with version, content hash and source.",
-      project: "The project file (.claude/referee.json) found from here, or null",
+      project: "The project file (.claude/referee.json) found from here, \"(default: shadow)\" or \"(default: soft)\" when REFEREE_DEFAULT_PROJECT gives this git repository the default, or null",
       project_error: "Only when the project file or its pack does not load from this shell (bad_project, pack_not_found or bad_pack). A packs_dir plugin setting reaches hooks, not the shell, so the verdict stays as it is.",
       stop_gate: "The done-gate mode the project file sets, when not off. active is not built yet and runs as shadow; stop_gate_note says so.",
       stop_gate_note: "Only with stop_gate active: it is not built yet and runs as shadow",
@@ -92,9 +92,11 @@ export const doctor: Command = {
     const projectFile = findProjectFile(io.cwd);
     let projectError: string | undefined;
     let stopGate: string | undefined;
+    let projectDefault: string | undefined;
     try {
-      const project = loadProject(io.cwd);
+      const project = loadProject(io.cwd, io.env);
       if (project) {
+        if (!projectFile) projectDefault = project.hooks.stopGate;
         const pack = loadPack(project.pack, packDirs(io.env));
         if (project.hooks.stopGate !== "off") stopGate = project.hooks.stopGate;
         if (stopGate) stopQuestions(pack);
@@ -131,7 +133,7 @@ export const doctor: Command = {
       data_dir: tildify(dataDir, io.home),
       data_bytes: dirSize(dataDir),
       packs: listPacks(packDirs(io.env)),
-      project: projectFile ? tildify(projectFile, io.home) : null,
+      project: projectFile ? tildify(projectFile, io.home) : projectDefault ? `(default: ${projectDefault})` : null,
       ...(projectError ? { project_error: projectError } : {}),
       ...(stopGate ? { stop_gate: stopGate } : {}),
       ...(stopGate === "active" ? { stop_gate_note: "active is not built yet and runs as shadow." } : {}),

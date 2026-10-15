@@ -79,7 +79,7 @@ export async function stopGate(io: HookIo, _pluginRoot: string): Promise<string 
   }
   if (typeof input?.cwd !== "string") return;
   const cwd = input.cwd;
-  const project = loadProject(cwd);
+  const project = loadProject(cwd, env);
   if (!project || project.hooks.stopGate === "off") return;
   const sessionId = typeof input.session_id === "string" ? input.session_id : "unknown";
   const dataDir = resolveDataDir(env, io.home, cwd);

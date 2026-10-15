@@ -285,7 +285,7 @@ export const receipts: Command = {
       const shown = stopRows(picked, transcriptLocator(projectTranscriptDirs(io.env, io.home, io.cwd), claudeProjectsDir(io.env, io.home)));
       let current = 0.7;
       try {
-        const project = loadProject(io.cwd);
+        const project = loadProject(io.cwd, io.env);
         if (project) current = threshold(loadPack(project.pack, packDirs(io.env)), project.thresholds, "stop.gate", "claims_done", 0.7);
       } catch {
         void 0;

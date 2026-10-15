@@ -69,7 +69,7 @@ export function clip(text: string, head: number, tail: number): string {
 }
 
 export function openPack(context: Context): { pack: Pack; project: ProjectConfig | null } {
-  const project = loadProject(context.io.cwd);
+  const project = loadProject(context.io.cwd, context.io.env);
   const name = context.flags.pack?.trim() || context.io.env["REFEREE_PACK"]?.trim() || project?.pack || "generic";
   return { pack: loadPack(name, packDirs(context.io.env)), project };
 }

@@ -1,8 +1,10 @@
 // Finds .claude/referee.json upward from cwd and merges .claude/referee.local.json over it (hooks and thresholds per key).
 // Project files pick a pack and hooks and can only raise thresholds; key, key command and packs_dir are ignored.
+// With no file, REFEREE_DEFAULT_PROJECT=shadow|soft gives every git repository the generic pack, the briefing and that stop-gate mode (docs/decisions/default-project.md); a file always wins.
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
+import type { Env } from "./config.ts";
 import { RefereeError } from "./errors.ts";
 import type { Area, Thresholds } from "./pack.ts";
 
@@ -68,9 +70,22 @@ export function findProjectFile(cwd: string): string | null {
   }
 }
 
-export function loadProject(cwd: string): ProjectConfig | null {
+function gitRoot(cwd: string): string | null {
+  for (let dir = cwd; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, ".git"))) return dir;
+    if (dirname(dir) === dir) return null;
+  }
+}
+
+function defaultProject(cwd: string, env: Env): ProjectConfig | null {
+  const mode = env["REFEREE_DEFAULT_PROJECT"]?.trim().toLowerCase();
+  const root = mode === "shadow" || mode === "soft" ? gitRoot(cwd) : null;
+  return root === null ? null : { root, pack: "generic", areas: undefined, hooks: { sessionStart: true, stopGate: mode as StopGate, preModelSwitch: false }, thresholds: undefined };
+}
+
+export function loadProject(cwd: string, env: Env = {}): ProjectConfig | null {
   const file = findProjectFile(cwd);
-  if (!file) return null;
+  if (!file) return defaultProject(cwd, env);
   const base = readProjectFile(file);
   const localFile = join(dirname(file), "referee.local.json");
   const local = existsSync(localFile) ? readProjectFile(localFile) : {};
