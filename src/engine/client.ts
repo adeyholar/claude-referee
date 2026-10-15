@@ -15,6 +15,7 @@ export interface JevCall {
   readonly state: EntryType;
   readonly questions: Questions;
   readonly model: string;
+  readonly assets?: Readonly<Record<string, Uint8Array>> | undefined;
 }
 
 export interface JevReply {
@@ -46,7 +47,7 @@ const stderrLogger = {
   error: (message: string) => void process.stderr.write(`[claude-referee] ${message}\n`),
 };
 
-async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, signal: AbortSignal) => Promise<T>, model?: string): Promise<T> {
+async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, signal: AbortSignal, sdk: typeof import("@typesafe-ai/sdk")) => Promise<T>, model?: string): Promise<T> {
   const sdk = await import("@typesafe-ai/sdk");
   const endsAt = Date.now() + options.budget.budgetMs;
   const budgetSignal = AbortSignal.timeout(options.budget.budgetMs);
@@ -63,7 +64,7 @@ async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, sig
     });
     for (let attempt = 0; ; attempt++) {
       try {
-        return await fn(client, signal);
+        return await fn(client, signal, sdk);
       } catch (error) {
         const wait = rateLimitWait(error, attempt);
         if (wait === undefined || attempt >= options.budget.maxRetries || wait >= endsAt - Date.now()) throw error;
@@ -81,8 +82,10 @@ async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, sig
 }
 
 export function callJev(call: JevCall, options: CallOptions): Promise<JevReply> {
-  return guarded(options, async (client, signal) => {
-    const { data, requestId } = await client.systemOne({ state: call.state as NonNullable<EntryType>, questions: call.questions, model: call.model }, { signal }).withResponse();
+  return guarded(options, async (client, signal, sdk) => {
+    const assets = call.assets ? Object.fromEntries(Object.entries(call.assets).map(([ref, bytes]) => [ref, sdk.image(bytes)])) : undefined;
+    const request = { state: call.state as NonNullable<EntryType>, questions: call.questions, model: call.model, ...(assets ? { assets } : {}) };
+    const { data, requestId } = await client.systemOne(request, { signal, ...(assets ? { headers: { "TypeSafe-Danger-Zone-Images": "true" } } : {}) }).withResponse();
     return {
       answers: data.answers as Readonly<Record<string, Answer>>,
       model: data.model,

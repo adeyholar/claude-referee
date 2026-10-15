@@ -18,6 +18,7 @@ export interface Planned {
   readonly id: string;
   readonly state: EntryType;
   readonly questions: Questions;
+  readonly assets?: Readonly<Record<string, Uint8Array>> | undefined;
 }
 
 export interface Outcome {
@@ -51,7 +52,7 @@ export interface SessionOptions {
 
 interface Prepared {
   readonly planned: Planned;
-  readonly body: { state: EntryType; questions: Questions };
+  readonly body: { state: EntryType; questions: Questions; assets?: Readonly<Record<string, Uint8Array>> | undefined };
   readonly stops: readonly Stop[];
 }
 
@@ -79,7 +80,7 @@ export function redactRequest(p: Planned, home: string, extra: PackPatterns | un
   const state = redact({ state: p.state }, options);
   const questions = redact({ questions: p.questions }, { ...options, keepKeys: true });
   return {
-    body: { state: state.value.state, questions: questions.value.questions },
+    body: { state: state.value.state, questions: questions.value.questions, ...(p.assets ? { assets: p.assets } : {}) },
     stops: [...state.stopped, ...questions.stopped],
     replaced: count(state.replaced) + count(questions.replaced),
   };
@@ -129,7 +130,7 @@ export class Session {
     const prepared = this.prepare(planned);
     const stops = prepared.flatMap((p) => p.stops);
     if (stops.length > 0) throw stopError(stops);
-    const bodies = prepared.map((p) => ({ id: p.planned.id, model: this.model, ...p.body }));
+    const bodies = prepared.map((p) => ({ id: p.planned.id, model: this.model, state: p.body.state, questions: p.body.questions, ...(p.body.assets ? { images: Object.entries(p.body.assets).map(([ref, bytes]) => ({ ref, bytes: bytes.length, sha256: sha256(bytes).slice(0, 12) })) } : {}) }));
     const estTokens = bodies.reduce((sum, b) => sum + estimateTokens(JSON.stringify(b)), 0);
     return { ok: true, verdict: "would_send", dry_run: true, requests: bodies.length, est_tokens: estTokens, replaced: this.replacedCount, sent: bodies };
   }
@@ -214,7 +215,7 @@ export class Session {
     let reply: JevReply;
     try {
       reply = await callJev(
-        { state: body.state, questions: body.questions, model: this.model },
+        { state: body.state, questions: body.questions, model: this.model, assets: body.assets },
         { key: apiKey, budget: PROFILES[this.options.profile ?? "cli"], baseURL: this.options.env["TYPESAFE_BASE_URL"], signal },
       );
     } catch (error) {

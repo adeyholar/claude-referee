@@ -50,3 +50,15 @@ export function secretsFile(): string {
   writeFileSync(path, `PASS src/app.test.ts\ndeploying with ${FAKE.aws}\ntoken ${FAKE.github}\nkey ${FAKE.anthropic}\n`);
   return path;
 }
+
+// A PNG with only a signature, an IHDR of the given size and an empty IDAT: enough for header checks, never a real picture.
+export function pngHeader(width: number, height: number, extra: Buffer[] = []): Buffer {
+  const ihdr = Buffer.alloc(25);
+  ihdr.writeUInt32BE(13, 0);
+  ihdr.write("IHDR", 4, "latin1");
+  ihdr.writeUInt32BE(width, 8);
+  ihdr.writeUInt32BE(height, 12);
+  const idat = Buffer.alloc(12);
+  idat.write("IDAT", 4, "latin1");
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), ihdr, ...extra, idat]);
+}

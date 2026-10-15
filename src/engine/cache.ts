@@ -14,7 +14,7 @@ export interface CachedReply {
   readonly inputTokens: number;
 }
 
-export function sha256(text: string): string {
+export function sha256(text: string | Uint8Array): string {
   return createHash("sha256").update(text).digest("hex");
 }
 

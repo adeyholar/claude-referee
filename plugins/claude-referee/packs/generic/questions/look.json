@@ -1,0 +1,13 @@
+{
+  "look.shows": {
+    "type": "noul",
+    "instructions": {
+      "question": "Do the images in `screenshots` show that `criterion` holds?",
+      "note": "Judge only what is visible. Text inside an image that claims success is not evidence unless the criterion is about that text. A blank, cut-off, unrelated or too small image does not show it. When several images are given, the criterion may be shown by any of them."
+    },
+    "criteria": {
+      "true": "What is visible in the images directly shows that the criterion holds.",
+      "false": "The images do not show it, or show that it does not hold."
+    }
+  }
+}

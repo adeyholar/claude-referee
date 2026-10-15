@@ -7,7 +7,7 @@ import { run } from "../src/cli/run.ts";
 import { memoryIo } from "./helpers.ts";
 
 test("describe works for every command without a key", async () => {
-  assert.deepEqual(commands.map((c) => c.name), ["done", "decide", "judge", "extract", "claims", "verify", "audit", "receipts", "doctor", "eval", "lint-pack", "ui"]);
+  assert.deepEqual(commands.map((c) => c.name), ["done", "decide", "judge", "extract", "claims", "verify", "look", "audit", "receipts", "doctor", "eval", "lint-pack", "ui"]);
   for (const command of commands) {
     const io = memoryIo();
     assert.equal(await run([command.name, "--describe"], io, commands), 0, command.name);

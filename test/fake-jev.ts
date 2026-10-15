@@ -7,6 +7,9 @@ export interface FakeRequest {
   readonly model: string;
   readonly state: unknown;
   readonly questions: Record<string, { type: string; criteria?: unknown; instructions?: unknown }>;
+  readonly assets?: Record<string, unknown>;
+  readonly headers?: Record<string, string | string[] | undefined>;
+  readonly fileSizes?: Record<string, number>;
 }
 
 export type Answerer = (request: FakeRequest) => Record<string, unknown>;
@@ -62,7 +65,17 @@ export async function fakeJev(
       res.end(JSON.stringify({ models: [{ name: "jev-latest", description: "fake", release_date: "2026-09-01" }] }));
       return;
     }
-    const body = JSON.parse(await readBody(req)) as FakeRequest;
+    const raw = await readBody(req);
+    const boundary = /^multipart\/form-data;\s*boundary=(.+)$/.exec(String(req.headers["content-type"] ?? ""))?.[1];
+    let body: FakeRequest;
+    if (boundary) {
+      const parts = raw.split(`--${boundary}`).filter((p) => /name="/.test(p));
+      const named = (p: string): string => /name="([^"]*)"/.exec(p)?.[1] ?? "";
+      const content = (p: string): string => p.slice(p.indexOf("\r\n\r\n") + 4, p.lastIndexOf("\r\n"));
+      const json = parts.find((p) => named(p) === "request");
+      body = JSON.parse(json ? content(json) : "{}") as FakeRequest;
+      body = { ...body, headers: req.headers, fileSizes: Object.fromEntries(parts.filter((p) => named(p) !== "request").map((p) => [named(p), content(p).length])) };
+    } else body = JSON.parse(raw) as FakeRequest;
     requests.push(body);
     authorizations.push(String(req.headers.authorization ?? ""));
     const behaviour = options.behave?.(body) ?? options;

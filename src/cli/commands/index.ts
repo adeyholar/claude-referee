@@ -9,8 +9,9 @@ import { evalCommand } from "./eval.ts";
 import { extract } from "./extract.ts";
 import { judge } from "./judge.ts";
 import { lintPack } from "./lint-pack.ts";
+import { look } from "./look.ts";
 import { receipts } from "./receipts.ts";
 import { ui } from "./ui.ts";
 import { claims, verify } from "./verify.ts";
 
-export const commands: readonly Command[] = [done, decide, judge, extract, claims, verify, audit, receipts, doctor, evalCommand, lintPack, ui];
+export const commands: readonly Command[] = [done, decide, judge, extract, claims, verify, look, audit, receipts, doctor, evalCommand, lintPack, ui];

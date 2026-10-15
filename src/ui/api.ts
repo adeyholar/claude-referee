@@ -275,6 +275,7 @@ const SENT = [
   { when: "done", what: "Your criterion and the output you pipe in; recognised runner output is parsed in code and only counts, exit code, failing test names and the matched summary and exit-code lines go out" },
   { when: "decide", what: "The decision, inline context, option texts and context_files contents, asked in two option orders" },
   { when: "judge, claims and verify", what: "The items, claims and source text you pass in" },
+  { when: "look (experimental)", what: "Your criteria and the image files you name with --image, unredacted: pixels cannot be redacted, so a screenshot can show secrets" },
   { when: "Done-gate in shadow or soft mode", what: "Prompt start (1,500 chars), final message end (2,000 chars), check commands with pass/fail and edited file paths" },
   { when: "This dashboard", what: "Nothing: no network call leaves this process, no telemetry, no external fonts or scripts" },
 ] as const;

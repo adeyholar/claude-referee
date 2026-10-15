@@ -10,7 +10,7 @@ import { GLOBAL_OPTIONS, run } from "../src/cli/run.ts";
 import { projectId } from "../src/engine/datadir.ts";
 import { appendStop } from "../src/engine/stopgate/stops.ts";
 import { defaultAnswer, fakeJev, type FakeRequest } from "./fake-jev.ts";
-import { FAKE, memoryIo, tempDir } from "./helpers.ts";
+import { FAKE, memoryIo, pngHeader, tempDir } from "./helpers.ts";
 
 const REPO = new URL("..", import.meta.url).pathname;
 const EVALS = join(REPO, "jev-evals");
@@ -24,7 +24,7 @@ async function contract(name: string): Promise<{ all: Set<string>; own: string[]
 }
 
 const answer = (request: FakeRequest): Record<string, unknown> => {
-  const state = JSON.stringify(request.state);
+  const state = JSON.stringify(request.state) + (request.fileSizes ? JSON.stringify(request.questions) : "");
   if (state.includes("REVIEW-ME")) return Object.fromEntries(Object.keys(request.questions).map((id) => [id, { type: "noul", noul: 0.5 }]));
   const out = defaultAnswer(request);
   for (const id of Object.keys(request.questions)) {
@@ -84,6 +84,10 @@ test("every key a command prints is named in its --describe contract", async () 
     await call([...done, "--dry-run"], { stdin: "Tests: 12 passed, 12 total\n" });
     await call(done, { stdin: "Tests: 12 passed, 12 total\n", env: { REFEREE_DATA_DIR: dataDir } });
     await call(done, { stdin: "RATE-ME, no runner summary\n" });
+
+    writeFileSync(join(cwd, "shot.png"), pngHeader(800, 600));
+    await call(["look", "--image", "shot.png", "--criteria", "a banner is visible", "--criteria", "a menu is visible"]);
+    await call(["look", "--image", "shot.png", "--criteria", "REVIEW-ME a banner is visible"]);
 
     writeFileSync(join(cwd, "ctx.md"), "Redis is already deployed.\n");
     const decision = JSON.stringify({ decision: "Where do counters live?", options: [{ name: "redis", text: "Redis" }, { name: "memory", text: "In-process LRU" }], context_files: ["ctx.md"], micro: [{ id: "risky", question: "Is it risky?", bad: true }] });

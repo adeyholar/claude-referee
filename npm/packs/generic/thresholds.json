@@ -3,6 +3,10 @@
     "met": 0.7,
     "missing": 0.5
   },
+  "look.shows": {
+    "met": 0.9,
+    "missing": 0.5
+  },
   "decide.best": {
     "clear": 0.85,
     "margin": 0.1

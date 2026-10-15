@@ -247,6 +247,9 @@ npx claude-referee audit --compare 2026-10-09T14:00:00Z --exclude my-repo
 # Opt in to a Jev reading of those turns for one project: does an unverified "done" predict that you push back next? Sends redacted excerpts; look first with --dry-run, and keep terms out with --skip <file>.
 npx claude-referee audit --ask --project my-repo --dry-run
 
+# Experimental: does a screenshot show it? PNG or JPEG, 256 to 1568 px a side. The image leaves your machine unredacted, so send only what the check needs; --dry-run shows size, hash and dimensions.
+npx claude-referee look --image after-save.png --criteria "a green confirmation that the changes were saved is visible"
+
 # See what would be sent, without calling Jev
 npm test 2>&1 | npx claude-referee done --criteria "all tests pass" --evidence - --dry-run
 
@@ -272,6 +275,7 @@ Each command prints one line of JSON: `ok`, the verdict, a few numbers, a `next_
 - If the input contains something that looks like a password, key or token, nothing is sent.
 - Emails, IP addresses and your home folder path are replaced before sending.
 - `--dry-run` shows exactly what would be sent, without sending it.
+- `look` is the one command that sends an image: only the files you name with `--image`, unredacted (pixels can't be redacted), so a screenshot can show a secret. It is experimental because TypeSafe's image support is.
 - The receipts stay on your machine: model, tokens, cost, time, the verdict and its numbers, never the text you sent. With the done-gate on, `stops.jsonl` also keeps excerpts of your prompt and Claude's last message. If you set `REFEREE_KEEP_EVIDENCE=1`, `done` also keeps its redacted criteria and evidence on your machine for 14 days, so you can label verdicts (`receipts --evidence-queue` lists them); it is off by default and nothing is sent.
 - Anything that would send free text on its own stays off until you turn it on.
 

@@ -34,7 +34,7 @@ test("configuration.md lists every question of the generic pack and every thresh
   const sentence = doc.split("\n").find((l) => l.startsWith("The `generic` pack has these")) ?? "";
   const listed = new Set([...sentence.matchAll(/`([^`]+)`/g)].map((m) => m[1]));
   const ids = Object.keys(pack.questions);
-  assert.equal(ids.length, 12);
+  assert.equal(ids.length, 13);
   for (const id of ids) assert.ok(listed.has(id), `question ${id} missing from the generic pack sentence`);
   assert.match(sentence, new RegExp(`these ${ids.length} questions`));
   const table = doc.split("\n").filter((l) => l.startsWith("| ") && l.includes("`"));
