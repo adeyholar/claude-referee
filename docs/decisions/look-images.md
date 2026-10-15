@@ -12,7 +12,7 @@ Images go in `state`, a question's `instructions` or its `criteria`, listed in a
 
 - **Local limits first.** `src/engine/image.ts` reads PNG and JPEG headers, rejects the cases the API rejects (format, size, sides, pixels, animated PNG) with a next step, so a bad file never costs a request or fails the whole call.
 - **Conservative band.** `met` needs p of 0.9 (`look.shows.met`); `missing` is below 0.5. No calibration exists for images here.
-- **Privacy.** Images leave the machine unredacted and only when named; `--dry-run` shows size, hash and dimensions; the cache and receipts keep answers and counts, never the image. See [privacy.md](../privacy.md).
+- **Privacy.** Images leave the machine unredacted and only when named; `--dry-run` shows size and hash; the cache and receipts keep answers and counts, never the image. See [privacy.md](../privacy.md).
 - The SDK upgrade to 0.7.0 (Node 22.12 or later) was needed for this; request bodies go uncompressed.
 
 ## First check (invented, small)

@@ -1,6 +1,6 @@
 // look (experimental): do the images show that each criterion holds? One request; every criterion is a Noul on the same images.
 // TypeSafe's image support is "dreamer-ready" and not measured here, so met needs p at the look.shows band (0.9 by default) and the output says experimental.
-// Images leave the machine only when named with --image; nothing is redacted (pixels cannot be), stored or cached beyond the answer, and --dry-run shows only size, hash and dimensions.
+// Images leave the machine only when named with --image; nothing is redacted (pixels cannot be), stored or cached beyond the answer, and --dry-run shows only size and hash.
 
 import type { EntryType, Questions } from "@typesafe-ai/sdk";
 import { RefereeError } from "../../engine/errors.ts";
@@ -64,7 +64,7 @@ export const look: Command = {
     },
     errors: [...JEV_ERRORS],
     effects:
-      "Sends the named image files, unredacted (pixels cannot be redacted), and the criteria to the TypeSafe API with the TypeSafe-Danger-Zone-Images header, unless --dry-run, which prints only each image's size, hash and dimensions. Screenshots can show secrets: send only what the criterion needs. Writes a receipt and a cache entry (answers only, never the image) to the data directory.",
+      "Sends the named image files, unredacted (pixels cannot be redacted), and the criteria to the TypeSafe API with the TypeSafe-Danger-Zone-Images header, unless --dry-run, which prints only each image's size and hash (its token estimate leaves the images out). Screenshots can show secrets: send only what the criterion needs. Writes a receipt and a cache entry (answers only, never the image) to the data directory.",
     cost: "One Jev request. Images are billed as input tokens at $0.042 per million; TypeSafe has not published an estimate of image tokens, so read the cost from --verbose after a run.",
   },
   options: { image: { type: "string", multiple: true }, criteria: { type: "string", multiple: true } },

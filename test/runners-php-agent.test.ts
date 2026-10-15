@@ -87,3 +87,8 @@ test("composite logs keep the existing caps: warnings from another linter cap a 
 test("a criterion about tests is not met by these runners alone", () => {
   assert.equal(verdictOf(`${PINT_PASS}\n${STAN_PASS}\n${EXIT}`, "all tests pass").verdict, "unsure");
 });
+
+test("review: an unterminated object does not hide the next one on the line", () => {
+  const broken = '{"tool":"pint","result":"passed","files":[{"path":"a{"tool":"phpstan","result":"failed","errors":3}\nexit code: 0\n';
+  assert.deepEqual(factsOf(broken).map((r) => [r.runner, r.errors]).sort(), [["phpstan", 3], ["pint", 0]]);
+});

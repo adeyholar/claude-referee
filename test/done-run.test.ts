@@ -2,6 +2,7 @@
 // Projects are invented temp folders with package.json scripts; the fake Jev answers 0.9.
 
 import assert from "node:assert/strict";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -9,7 +10,7 @@ import { posixTest } from "./posix-test.ts";
 import { commands } from "../src/cli/commands/index.ts";
 import { run } from "../src/cli/run.ts";
 import { detectCheckSet } from "../src/engine/detect-checks.ts";
-import { pickCheck, runCheck } from "../src/engine/run-check.ts";
+import { KEY_VARIABLES, pickCheck, runCheck } from "../src/engine/run-check.ts";
 import { analyzeTranscript } from "../src/engine/stopgate/transcript.ts";
 import { fakeJev } from "./fake-jev.ts";
 import { memoryIo, tempDir } from "./helpers.ts";
@@ -124,4 +125,83 @@ test("B4: the Stop gate reads a done --run call as a check: met passes, a failed
   assert.equal(turn('npm test 2>&1 | claude-referee done --criteria "all tests pass" --evidence -', met).checks.length, 1, "the piped check is the check, as before");
   assert.equal(turn('claude-referee done --criteria "x" --evidence -', met).checks.length, 0);
   assert.equal(turn("node --test test/cli.mjs", "ℹ pass 1\nℹ fail 0\n").checks.length, 1, "node --test stays a test run");
+});
+
+test("review: every key-like variable is stripped from the check, including the plugin setting, and nothing else", () => {
+  for (const name of ["TYPESAFE_API_KEY", "TYPESAFE_API_KEY_CMD", "EVAL_TYPESAFE_API_KEY", "REFEREE_BASE_URL_KEY", "CLAUDE_PLUGIN_OPTION_API_KEY", "CLAUDE_PLUGIN_OPTION_SOME_TOKEN"]) assert.equal(KEY_VARIABLES.test(name), true, name);
+  for (const name of ["PATH", "HOME", "TYPESAFE_MODEL", "TYPESAFE_BASE_URL", "CLAUDE_PLUGIN_OPTION_MODEL", "CLAUDE_PLUGIN_OPTION_PACKS_DIR", "KEEP_ME"]) assert.equal(KEY_VARIABLES.test(name), false, name);
+});
+
+posixTest("review: the plugin API key reaches no check, and the others stay", async () => {
+  const out = await runCheck("env | grep -E 'API_KEY|KEEP_ME' | sort", tempDir(), { PATH: process.env["PATH"], CLAUDE_PLUGIN_OPTION_API_KEY: "plugin-secret", TYPESAFE_API_KEY: "s1", KEEP_ME: "yes" }, 10_000);
+  assert.equal(out.output, "KEEP_ME=yes\n");
+});
+
+posixTest("review: the exit code comes from the shell, so a check that leaves a background child behind returns at once with its own code", async () => {
+  const started = Date.now();
+  const result = await runCheck("sleep 6 & echo hi", tempDir(), { PATH: process.env["PATH"] }, 600_000);
+  assert.ok(Date.now() - started < 4000, `returned in ${Date.now() - started} ms, not after the child`);
+  assert.deepEqual([result.output, result.code, result.timedOut], ["hi\n", 0, false]);
+});
+
+posixTest("review: a timeout resolves even when a descendant escaped the process group", async () => {
+  const started = Date.now();
+  const result = await runCheck("perl -MPOSIX -e 'POSIX::setsid(); exec \"sleep\", \"7\"' & echo hi; sleep 30", tempDir(), { PATH: process.env["PATH"] }, 1000);
+  assert.ok(Date.now() - started < 6000, `resolved in ${Date.now() - started} ms`);
+  assert.deepEqual([result.timedOut, result.code], [true, 124]);
+});
+
+posixTest("review: stopping the CLI stops the check it started", async () => {
+  const dir = tempDir();
+  const script = join(dir, "go.ts");
+  writeFileSync(script, `import { runCheck } from ${JSON.stringify(new URL("../src/engine/run-check.ts", import.meta.url).href)};\nawait runCheck("sleep 1234", ${JSON.stringify(dir)}, { PATH: process.env.PATH }, 600000);\n`);
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "NODE_TEST_CONTEXT"));
+  const child = spawn(process.execPath, ["--experimental-strip-types", "--no-warnings", script], { stdio: "ignore", env });
+  const alive = (): boolean => { try { execFileSync("pgrep", ["-f", "sleep 1234"], { stdio: "ignore" }); return true; } catch { return false; } };
+  for (let i = 0; i < 40 && !alive(); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.equal(alive(), true, "the check started");
+  child.kill("SIGTERM");
+  await new Promise((r) => child.on("exit", r));
+  for (let i = 0; i < 20 && alive(); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.equal(alive(), false, "the check died with the CLI");
+});
+
+posixTest("review: the criteria count is checked before the check runs", async () => {
+  const dir = project({ test: "node -e \"require('fs').writeFileSync('ran.txt','x')\"" });
+  const eleven = Array.from({ length: 11 }, (_, i) => ["--criteria", `claim ${i}`]).flat();
+  const { out } = await doneRun(dir, ["--run", "test", ...eleven]);
+  assert.equal(out["error"], "bad_input");
+  assert.equal(existsSync(join(dir, "ran.txt")), false, "nothing ran");
+});
+
+posixTest("review: the check's own exit code outvotes a stray phrase in its output", async () => {
+  const dir = project({ test: "node -e \"console.log('Tests: 3 passed, 3 total'); console.log('helper exited with exit code 1 (expected)')\"" });
+  const { out } = await doneRun(dir, ["--run", "test"]);
+  assert.deepEqual([out["verdict"], out["exit_code"], out["requests"]], ["met", 0, 1]);
+});
+
+test("review: a subfolder named like a cd option is not runnable, and without a project the subfolder fallback is off", () => {
+  for (const name of ["-P", "--", "-L"]) {
+    const root = tempDir();
+    mkdirSync(join(root, name));
+    writeFileSync(join(root, name, "package.json"), JSON.stringify({ scripts: { test: "x" } }));
+    assert.equal(detectCheckSet(root, root)?.checks[0]?.runnable, false, name);
+  }
+  const root = tempDir();
+  mkdirSync(join(root, "app"));
+  writeFileSync(join(root, "app", "package.json"), JSON.stringify({ scripts: { test: "x" } }));
+  assert.equal(detectCheckSet(root, root)?.checks[0]?.command, "cd app && npm run test");
+  assert.equal(detectCheckSet(root, root, { subdir: false }), null);
+});
+
+test("review: the Stop gate does not count a not-met run next to another call, or a look-alike command", () => {
+  const met = '{"ok":true,"verdict":"met","run":true}';
+  const missing = '{"ok":true,"verdict":"missing","run":true}';
+  const passes = (command: string, out: string): boolean => turn(command, out).passedCheckAfterLastEdit;
+  assert.equal(passes("claude-referee done --run lint; claude-referee done --run test || true", `${met}\n${missing}`), false);
+  assert.equal(passes("claude-referee done --run lint; claude-referee done --run test", `${met}\n${met}`), true);
+  assert.equal(passes("claude-referee done --run lint; claude-referee done --run test || true", met), false, "one verdict for two run segments is unknown, not a pass");
+  assert.equal(passes("claude-referee done --run lint; npm test", `${missing}\nTests: 3 passed, 3 total`), false);
+  assert.equal(passes("claude-referee claims --claim done --run x", met), false, "only the done subcommand counts");
+  assert.equal(turn("claude-referee done --run lint --criteria 'secret client wording'", met).checks[0]?.cmd, "claude-referee done --run", "the criteria text never reaches the gate's check list");
 });

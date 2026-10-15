@@ -224,13 +224,13 @@ export class Session {
     }
     if (breakerSession) recordBreaker(this.dataDir, breakerSession, true, this.options.now());
     this.requests += 1;
-    this.inputTokens += reply.inputTokens;
-    const usd = costUsd(reply.model, reply.inputTokens);
+    this.inputTokens += reply.inputTokens ?? 0;
+    const usd = reply.inputTokens === null ? null : costUsd(reply.model, reply.inputTokens);
     if (usd === null) this.unpriced = true;
     else this.cost += usd;
     this.answeredModel = reply.model;
     if (reply.requestId) this.requestIds.push(reply.requestId);
-    if (!writeCache(this.dataDir, key, { ts: this.options.now(), model: reply.model, answers: reply.answers, inputTokens: reply.inputTokens })) this.unsaved = true;
+    if (!writeCache(this.dataDir, key, { ts: this.options.now(), model: reply.model, answers: reply.answers, inputTokens: reply.inputTokens ?? 0 })) this.unsaved = true;
     return reply;
   }
 

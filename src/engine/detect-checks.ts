@@ -88,16 +88,17 @@ function onlySubdir(root: string): { name: string; checks: Check[] } | null {
   return hits.length === 1 ? (hits[0] ?? null) : null;
 }
 
-// The checks `done --run` may run (those with runnable true), with the folder to run them in (the manifest's, or the root for a single checked subfolder).
-export function detectCheckSet(cwd: string, root: string): { dir: string; checks: Check[] } | null {
+// The checks `done --run` may run (those with runnable true), with the folder to run them in (the manifest's, or the root for a single checked subfolder; `subdir: false` turns that fallback off).
+// A subfolder name must start with a letter, digit or underscore, so it can never read as a `cd` option.
+export function detectCheckSet(cwd: string, root: string, options: { subdir?: boolean } = {}): { dir: string; checks: Check[] } | null {
   const dir = manifestDir(cwd, root);
   if (dir) {
     const checks = checksIn(dir);
     return checks.length > 0 ? { dir, checks } : null;
   }
-  const sub = onlySubdir(root);
+  const sub = options.subdir === false ? null : onlySubdir(root);
   if (!sub) return null;
-  const plain = /^[\w.-]+$/.test(sub.name);
+  const plain = /^[A-Za-z0-9_][\w.-]*$/.test(sub.name);
   return { dir: root, checks: sub.checks.map((c) => ({ family: c.family, command: `cd ${plain ? sub.name : JSON.stringify(sub.name)} && ${c.command}`, runnable: plain })) };
 }
 

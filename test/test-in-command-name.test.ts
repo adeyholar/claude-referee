@@ -19,7 +19,7 @@ test("B1: a script runner's test script in the criterion is not a test claim, ot
     assert.equal(claimsTests(c), false, c);
     assert.deepEqual(verdictOf(c), { verdict: "met", reason: undefined }, c);
   }
-  for (const c of ["all tests pass", "the tests pass", "composer test passes all the tests", "cargo test passes", "bun test passes", "php artisan test passes", "go test ./... passes", "the spec suite passes", "npm test and the integration tests pass"]) {
+  for (const c of ["make tests pass", "yarn tests pass", "pnpm tests pass", "composer testing is green", "all tests pass", "the tests pass", "composer test passes all the tests", "cargo test passes", "bun test passes", "php artisan test passes", "go test ./... passes", "the spec suite passes", "npm test and the integration tests pass"]) {
     assert.equal(claimsTests(c), true, c);
     assert.deepEqual(verdictOf(c), { verdict: "unsure", reason: "no_tests_run" }, c);
   }

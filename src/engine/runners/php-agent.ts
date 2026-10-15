@@ -29,7 +29,8 @@ function objectEnd(line: string, from: number): number {
     else if (c === "{") depth++;
     else if (c === "}" && --depth === 0) return i + 1;
   }
-  return line.length;
+  const next = line.indexOf('{"tool":', from + 1);
+  return next === -1 ? line.length : next;
 }
 
 function summariesIn(line: string): Map<string, Summary[]> {
@@ -44,7 +45,9 @@ function summariesIn(line: string): Map<string, Summary[]> {
     const [tool, result] = [head[1] as string, head[2] as Result];
     const rector = RECTOR_TOTALS.exec(text);
     const errors = Number(PHPSTAN_ERRORS.exec(text)?.[1] ?? rector?.[2] ?? 0);
-    found.set(tool, [...(found.get(tool) ?? []), { result, errors, changed: Number(rector?.[1] ?? 0) }]);
+    const seen = found.get(tool) ?? [];
+    seen.push({ result, errors, changed: Number(rector?.[1] ?? 0) });
+    found.set(tool, seen);
     at = end;
   }
 }

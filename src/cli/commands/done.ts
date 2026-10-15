@@ -38,7 +38,7 @@ const NO_TESTS_NEXT = "The log itself says no tests ran, so done won't say met. 
 const BUILD_ONLY_NEXT = "The log shows only a build or a lint run (no test results), and the criterion is about tests, so done won't say met. Run the tests and pipe their output in.";
 const TEST_CRITERION = /\b(?:tests?|testing|test suites?|specs?)\b/i;
 // A script runner's own test script (`composer test`, `npm run test:unit`) names a command, not a claim that tests ran; toolchain commands (`cargo test`, `php artisan test`) stay claims.
-const SCRIPT_TEST = /\b(?:(?:composer|npm|pnpm|yarn|make)\s+(?:run\s+)?|bun\s+run\s+)test\w*(?::[\w-]+)*/gi;
+const SCRIPT_TEST = /\b(?:(?:composer|npm|pnpm|yarn|make)\s+(?:run\s+)?|bun\s+run\s+)test(?:[:_-][\w:-]+)*(?!\w)/gi;
 export const claimsTests = (criterion: string): boolean => TEST_CRITERION.test(criterion.replace(SCRIPT_TEST, " "));
 const SKIP_WORDS = /^OK, but .*\b(?:incomplete|skipped|risky)\b/i;
 
@@ -113,8 +113,11 @@ function factsOf(parsed: ParsedEvidence): Record<string, unknown> {
   return { trust: parsed.trust, exit_code: parsed.exit_code, exit_lines: parsed.exit_lines, ...(parsed.trust === "exit_code" && parsed.command_lines.length > 0 ? { command_lines: parsed.command_lines } : {}), runners: parsed.runners.map(({ build_only: _buildOnly, ...r }) => r), conflict: parsed.conflict, lines: parsed.lines };
 }
 
-export function doneRequest(pack: Pack, thresholds: Thresholds | undefined, criteria: readonly string[], evidence: string): { planned: Planned[]; finish: (outcomes: Outcome[]) => Result } {
-  const parsed = parseEvidence(evidence);
+// `exitCode` is the check's own exit status when the CLI ran it (done --run): a stray "exit code 1" printed by the check itself must not outvote it.
+export function doneRequest(pack: Pack, thresholds: Thresholds | undefined, criteria: readonly string[], evidence: string, exitCode?: number): { planned: Planned[]; finish: (outcomes: Outcome[]) => Result } {
+  const read = parseEvidence(evidence);
+  const failing = read.runners.some((r) => r.failed + r.errors > 0);
+  const parsed: ParsedEvidence = exitCode === undefined ? read : { ...read, exit_code: exitCode, exit_lines: [`exit code: ${exitCode}`], conflict: failing && (read.runners.some((r) => r.failed + r.errors === 0 && r.passed > 0) || exitCode === 0) };
   if (parsed.exit_code !== null && parsed.exit_code !== 0) {
     const code = parsed.exit_code;
     return {
@@ -218,16 +221,19 @@ export const done: Command = {
     let criteria = given;
     let evidence: string;
     let ran: string | undefined;
+    let exitCode: number | undefined;
     if (spec !== undefined) {
       if (str(context, "evidence") !== undefined) throw new RefereeError("bad_input", "--run and --evidence exclude each other.", { next_step: "Use --run to let done run the check, or --evidence to pass output you already have." });
       if (io.platform === "win32") throw new RefereeError("bad_input", "--run needs sh and is not available on Windows.", { next_step: "Pipe the check's output instead." });
       const seconds = str(context, "timeout") === undefined ? 600 : Number(str(context, "timeout"));
       if (!Number.isFinite(seconds) || seconds < 1 || seconds > 3600) throw new RefereeError("bad_input", "--timeout is a number of seconds from 1 to 3600.");
-      const set = detectCheckSet(io.cwd, project?.root ?? io.cwd);
+      if (criteria.length > 10) throw new RefereeError("bad_input", "At most 10 criteria per call.");
+      const set = detectCheckSet(io.cwd, project?.root ?? io.cwd, { subdir: project !== null });
       const check = pickCheck(spec, set);
       ran = check.command;
       if (criteria.length === 0) criteria = [DEFAULT_CRITERIA[check.family] ?? "all checks pass"];
       const result = await runCheck(check.command, set?.dir ?? io.cwd, io.env, seconds * 1000);
+      exitCode = result.code;
       evidence = doneEvidence(`$ ${check.command}\n${result.output.trimEnd()}\n${result.timedOut ? `[claude-referee] timed out after ${seconds}s\n` : ""}exit code: ${result.code}\n`);
     } else {
       if (criteria.length === 0) throw new RefereeError("bad_input", "Give at least one --criteria.", { next_step: 'Example: --criteria "all tests pass"' });
@@ -235,7 +241,7 @@ export const done: Command = {
     }
     if (criteria.length > 10) throw new RefereeError("bad_input", "At most 10 criteria per call.");
     if (!evidence.trim()) throw new RefereeError("bad_input", "The evidence is empty.");
-    const request = doneRequest(pack, project?.thresholds, criteria, evidence);
+    const request = doneRequest(pack, project?.thresholds, criteria, evidence, exitCode);
     const { planned } = request;
     const RUN_NEXT = "done ran the check and judged all of its output. Fix what the output shows, or narrow --criteria, and run done --run again; the same output gives the same answer.";
     const finish =

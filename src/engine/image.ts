@@ -32,7 +32,7 @@ function pngSize(b: Buffer, name: string): { width: number; height: number } {
   let size: { width: number; height: number } | undefined;
   while (at + 8 <= b.length) {
     const type = b.toString("latin1", at + 4, at + 8);
-    if (type === "IHDR" && at + 16 <= b.length) size = { width: b.readUInt32BE(at + 8), height: b.readUInt32BE(at + 12) };
+    if (type === "IHDR" && !size && at + 16 <= b.length) size = { width: b.readUInt32BE(at + 8), height: b.readUInt32BE(at + 12) };
     if (type === "acTL") throw bad(`${name} is an animated PNG; the API rejects animations.`, "Export one frame as a still PNG or JPEG.");
     if (type === "IDAT") break;
     at += 12 + b.readUInt32BE(at);
@@ -63,7 +63,9 @@ export function readImage(path: string, cwd: string): ImageFile {
   const file = resolve(cwd, path);
   let bytes: Buffer;
   try {
-    if (statSync(file).size > MAX_IMAGE_BYTES) throw bad(`${path} is larger than 16 MiB.`, RESIZE);
+    const info = statSync(file);
+    if (!info.isFile()) throw bad(`${path} is not a regular file.`, "Give the path of a PNG or JPEG file.");
+    if (info.size > MAX_IMAGE_BYTES) throw bad(`${path} is larger than 16 MiB.`, RESIZE);
     bytes = readFileSync(file);
   } catch (error) {
     if (error instanceof RefereeError) throw error;
@@ -81,7 +83,8 @@ export function readImage(path: string, cwd: string): ImageFile {
 export function readImages(paths: readonly string[], cwd: string): ImageFile[] {
   if (paths.length === 0) throw bad("Give at least one --image.", "Example: --image screenshot.png");
   if (paths.length > MAX_IMAGES) throw bad(`At most ${MAX_IMAGES} images per call.`, "Send the most relevant ones, or split the check.");
-  const images = paths.map((p) => readImage(p, cwd));
+  const read = paths.map((p) => readImage(p, cwd));
+  const images = read.filter((image, i) => read.findIndex((o) => o.ref === image.ref) === i);
   if (images.reduce((sum, i) => sum + i.bytes.length, 0) > MAX_TOTAL_BYTES) throw bad("The images together are larger than 24 MiB.", RESIZE);
-  return images.filter((image, i) => images.findIndex((o) => o.ref === image.ref) === i);
+  return images;
 }

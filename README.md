@@ -250,7 +250,7 @@ npx claude-referee audit --compare 2026-10-09T14:00:00Z --exclude my-repo
 # Opt in to a Jev reading of those turns for one project: does an unverified "done" predict that you push back next? Sends redacted excerpts; look first with --dry-run, and keep terms out with --skip <file>.
 npx claude-referee audit --ask --project my-repo --dry-run
 
-# Experimental: does a screenshot show it? PNG or JPEG, 256 to 1568 px a side. The image leaves your machine unredacted, so send only what the check needs; --dry-run shows size, hash and dimensions.
+# Experimental: does a screenshot show it? PNG or JPEG, 256 to 1568 px a side. The image leaves your machine unredacted, so send only what the check needs; --dry-run shows size and hash.
 npx claude-referee look --image after-save.png --criteria "a green confirmation that the changes were saved is visible"
 
 # See what would be sent, without calling Jev

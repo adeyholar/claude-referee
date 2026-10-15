@@ -78,3 +78,8 @@ test("done calls split by whether the CLI ran the check (outcome.run) or the evi
   const receipts = [done("1", "met", true), done("2", "missing", true), done("3", "met", true), done("4", "met"), done("5", "missing"), done("6", "unsure")];
   assert.deepEqual(measures({ receipts, stops: [], labels: [], since }).done_met_by_run, { run: { k: 2, n: 3, share: 0.667 }, piped: { k: 1, n: 3, share: 0.333 } });
 });
+
+test("an errored or refused done call has no verdict and counts in neither bucket", () => {
+  const receipts = [{ id: "1", ts: T(1), command: "done", verdict: "met", outcome: { run: true } }, { id: "2", ts: T(1), command: "done", error: "bad_input" }, { id: "3", ts: T(1), command: "done", verdict: "missing" }];
+  assert.deepEqual(measures({ receipts, stops: [], labels: [], since }).done_met_by_run, { run: { k: 1, n: 1, share: 1 }, piped: { k: 0, n: 1, share: 0 } });
+});

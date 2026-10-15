@@ -21,7 +21,7 @@ export interface JevCall {
 export interface JevReply {
   readonly answers: Readonly<Record<string, Answer>>;
   readonly model: string;
-  readonly inputTokens: number;
+  readonly inputTokens: number | null;
   readonly requestId: string | undefined;
 }
 
@@ -81,15 +81,19 @@ async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, sig
   }
 }
 
+// Images are uploaded with the request, so a call that carries them gets a longer per-attempt timeout and total budget than a text-only one.
+const IMAGE_BUDGET = { budgetMs: 60_000, perAttemptMs: 30_000 };
+
 export function callJev(call: JevCall, options: CallOptions): Promise<JevReply> {
-  return guarded(options, async (client, signal, sdk) => {
+  const budget = call.assets ? { ...options.budget, budgetMs: Math.max(options.budget.budgetMs, IMAGE_BUDGET.budgetMs), perAttemptMs: Math.max(options.budget.perAttemptMs, IMAGE_BUDGET.perAttemptMs) } : options.budget;
+  return guarded({ ...options, budget }, async (client, signal, sdk) => {
     const assets = call.assets ? Object.fromEntries(Object.entries(call.assets).map(([ref, bytes]) => [ref, sdk.image(bytes)])) : undefined;
     const request = { state: call.state as NonNullable<EntryType>, questions: call.questions, model: call.model, ...(assets ? { assets } : {}) };
     const { data, requestId } = await client.systemOne(request, { signal, ...(assets ? { headers: { "TypeSafe-Danger-Zone-Images": "true" } } : {}) }).withResponse();
     return {
       answers: data.answers as Readonly<Record<string, Answer>>,
       model: data.model,
-      inputTokens: data.usage.input_tokens ?? 0,
+      inputTokens: data.usage.input_tokens,
       requestId,
     };
   }, call.model);

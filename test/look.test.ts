@@ -68,7 +68,7 @@ async function runLook(args: string[], env: Record<string, string>): Promise<{ c
   return { code, out: JSON.parse(io.out.join("").trim().split("\n").at(-1) ?? "{}") as Record<string, unknown> };
 }
 
-test("--dry-run prints size, hash and dimensions of each image and sends nothing", async () => {
+test("--dry-run prints size and hash of each image and sends nothing", async () => {
   const fake = await fakeJev();
   try {
     const file = write("shot.png", png(800, 600));
@@ -114,4 +114,13 @@ test("look needs criteria and an image, and refuses a bad file before any reques
   } finally {
     await fake.close();
   }
+});
+
+test("review: a path that is not a regular file is refused before it is read, and duplicates are counted once against the size cap", () => {
+  assert.throws(() => readImage(dir, dir), /not a regular file/);
+  const big = png(800, 600, [Buffer.alloc(10 * 1024 * 1024)]);
+  const same = [write("d1.png", big), write("d2.png", big), write("d3.png", big)];
+  assert.equal(readImages(same, dir).length, 1, "three copies of a 10 MB file are one image of 10 MB");
+  const first = png(300, 300, [Buffer.concat([Buffer.from([0, 0, 0, 13]), Buffer.from("IHDR", "latin1"), Buffer.alloc(13), Buffer.alloc(4)])]);
+  assert.equal(readImage(write("two-ihdr.png", first), dir).width, 300, "the first IHDR wins");
 });
