@@ -51,17 +51,30 @@ function recordFacts(facts: StopFacts) {
   };
 }
 
-function backgroundFacts(text: string | null, pending: number, session: string): Partial<StopRecord> {
-  if (text === null) return { bg_pending: pending };
+// Counts per documented task type (shell, subagent, monitor, workflow, ...), never a command or description: it tells a dev server that never finishes from subagents that will wake the agent.
+function taskTypes(tasks: readonly unknown[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const task of tasks) {
+    const raw = typeof task === "object" && task !== null ? (task as { type?: unknown }).type : undefined;
+    const type = typeof raw === "string" && /^[A-Za-z][A-Za-z ]{0,19}$/.test(raw) ? raw.toLowerCase() : "other";
+    out[type] = (out[type] ?? 0) + 1;
+  }
+  return out;
+}
+
+function backgroundFacts(text: string | null, tasks: readonly unknown[], session: string): Partial<StopRecord> {
+  const pending = tasks.length;
+  const types = taskTypes(tasks);
+  if (text === null) return { bg_pending: pending, bg_types: types };
   try {
     if (scanLength(text) > BG_SCAN_MAX) {
       const turn = currentTurn(text, session);
-      return { ...(turn ? { turn } : {}), bg_pending: pending };
+      return { ...(turn ? { turn } : {}), bg_pending: pending, bg_types: types };
     }
     const facts = analyzeTranscript(text, session);
-    return { ...recordFacts(facts), bg_pending: pending, would_ask: stopSkipReason(facts) === null };
+    return { ...recordFacts(facts), bg_pending: pending, bg_types: types, would_ask: stopSkipReason(facts) === null };
   } catch {
-    return { bg_pending: pending };
+    return { bg_pending: pending, bg_types: types };
   }
 }
 
@@ -94,9 +107,9 @@ export async function stopGate(io: HookIo, _pluginRoot: string): Promise<string 
     const turn = text === null ? undefined : currentTurn(text, sessionId);
     return finish("stop_hook_active", turn ? { turn } : {});
   }
-  const pending = Array.isArray(input.background_tasks) ? input.background_tasks.length : 0;
+  const tasks = Array.isArray(input.background_tasks) ? input.background_tasks : [];
   const text = readTranscript(input.transcript_path);
-  if (pending > 0) return finish("background_tasks", backgroundFacts(text, pending, sessionId));
+  if (tasks.length > 0) return finish("background_tasks", backgroundFacts(text, tasks, sessionId));
   if (text === null) return finish("no_transcript");
   const facts = analyzeTranscript(text, sessionId);
   const counts = recordFacts(facts);

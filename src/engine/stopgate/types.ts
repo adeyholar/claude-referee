@@ -1,6 +1,6 @@
 // Shared types of the Stop done-gate (shadow mode): facts read from a transcript, Jev's decision and the stored stop record.
 // Skips credential, no_key and config_error never reached Jev (redaction stop, no usable key, pack that does not load); only jev_error and breaker_open are Jev errors.
-// turn: a short hash keying the turn (its prompt's uuid, else that line's position and the session); bg_pending and would_ask appear only on background_tasks skips.
+// turn: a short hash keying the turn (its prompt's uuid, else that line's position and the session); bg_pending, bg_types (counts per task type) and would_ask appear only on background_tasks skips.
 
 import type { ErrorCode } from "../errors.ts";
 import type { CheckoutClass } from "../datadir.ts";
@@ -59,6 +59,7 @@ export interface StopRecord {
   readonly stale_pass?: true;
   readonly turn?: string;
   readonly bg_pending?: number;
+  readonly bg_types?: Readonly<Record<string, number>>;
   readonly would_ask?: boolean;
   readonly decision?: StopDecision;
   readonly ms: number;

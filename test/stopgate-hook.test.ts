@@ -309,6 +309,16 @@ test("background tasks: nothing is asked or printed, but the turn's counts, mark
   assert.deepEqual([marked.edits, marked.checks, marked.truncated_checks, marked.subagent_calls, marked.bg_pending, marked.would_ask], [1, 1, 1, 1, 1, true]);
 });
 
+test("background tasks: the record keeps a count per task type and never a command, a description or an odd label", async () => {
+  const tasks = [{ id: "a", type: "shell", command: "php artisan serve --secret-flag", description: "dev server" }, { id: "b", type: "Shell" }, { id: "c", type: "subagent", agent_type: "general-purpose" }, { id: "d", type: "x".repeat(40) }, { id: "e" }, "text", null];
+  const stop = (await run({ input: { background_tasks: tasks } })).stops[0]!;
+  assert.deepEqual(stop.bg_types, { shell: 2, subagent: 1, other: 4 });
+  assert.equal(stop.bg_pending, 7);
+  const json = JSON.stringify(stop);
+  assert.equal(json.includes("artisan") || json.includes("dev server") || json.includes("general-purpose"), false);
+  assert.equal("bg_types" in (await run({ input: { background_tasks: [] } })).stops[0]!, false);
+});
+
 test("background tasks: would_ask follows the code-side skip rule", async () => {
   const none = (await run({ transcript: NO_EDITS, input: BG })).stops[0]!;
   assert.deepEqual([none.skipped, none.edits, none.checks, none.would_ask], ["background_tasks", 0, 0, false]);
