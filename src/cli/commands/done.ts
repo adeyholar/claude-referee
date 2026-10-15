@@ -37,6 +37,9 @@ const INCOMPLETE_NEXT = "The run is cut off, empty, cancelled, flaky or changed 
 const NO_TESTS_NEXT = "The log itself says no tests ran, so done won't say met. Run the tests that were meant to run and pipe their output in.";
 const BUILD_ONLY_NEXT = "The log shows only a build or a lint run (no test results), and the criterion is about tests, so done won't say met. Run the tests and pipe their output in.";
 const TEST_CRITERION = /\b(?:tests?|testing|test suites?|specs?)\b/i;
+// A script runner's own test script (`composer test`, `npm run test:unit`) names a command, not a claim that tests ran; toolchain commands (`cargo test`, `php artisan test`) stay claims.
+const SCRIPT_TEST = /\b(?:(?:composer|npm|pnpm|yarn|make)\s+(?:run\s+)?|bun\s+run\s+)test\w*(?::[\w-]+)*/gi;
+export const claimsTests = (criterion: string): boolean => TEST_CRITERION.test(criterion.replace(SCRIPT_TEST, " "));
 const SKIP_WORDS = /^OK, but .*\b(?:incomplete|skipped|risky)\b/i;
 
 function hasSkips(parsed: ParsedEvidence, evidence: string): boolean {
@@ -144,7 +147,7 @@ export function doneRequest(pack: Pack, thresholds: Thresholds | undefined, crit
       const raw: Verdict = p >= met ? "met" : p < missing ? "missing" : "unsure";
       const skipCap = raw === "met" && hasSkips(parsed, evidence);
       const logSaysNoTests = NO_TESTS.test(evidence);
-      const buildCap = raw === "met" && !logSaysNoTests && onlyBuilds(parsed) && TEST_CRITERION.test(criterion);
+      const buildCap = raw === "met" && !logSaysNoTests && onlyBuilds(parsed) && claimsTests(criterion);
       const noTestsCap = raw === "met" && (logSaysNoTests || buildCap);
       const incompleteCap = raw === "met" && hasIncomplete(parsed);
       const warningCap = raw === "met" && warnCap && CLEAN_CRITERION.test(criterion);
@@ -241,7 +244,9 @@ export const done: Command = {
         : (outcomes: Outcome[]) => {
             const result = request.finish(outcomes);
             const asks = typeof result["next_step"] === "string" && result["reason"] === undefined;
-            return { ...result, ...(asks ? { next_step: RUN_NEXT } : {}), run: true, ran };
+            const buildOnly = result["reason"] === "no_tests_run" && result["next_step"] === BUILD_ONLY_NEXT;
+            const next = asks ? RUN_NEXT : buildOnly ? `${ran} ran only build or lint tools, so no test results were shown. If it is the project's check, claim what it does: --criteria "${ran} exits with code 0". Otherwise run the real tests.` : undefined;
+            return { ...result, ...(next ? { next_step: next } : {}), run: true, ran };
           };
     if (planned.length === 0 && context.flags.dryRun) return reorder({ ...finish([]), dry_run: true, requests: 0 });
     const result = await jevCommand(context, "done", pack, planned, finish);
