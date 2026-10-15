@@ -61,3 +61,14 @@ test("excluded sessions drop their receipts and stops from every measure; receip
   const clean = measures({ receipts, stops, labels: [], since, excludeSessions: ["mine"] });
   assert.deepEqual([clean.reask_cleared, clean.edit_turns_with_check, clean.exit_only_missing.k], [{ k: 0, n: 1, share: 0 }, { k: 0, n: 1, share: 0 }, 2]);
 });
+
+test("a pack exclusion drops every session that wrote a receipt under that pack, counted once, and --until closes the window", () => {
+  const d = (id: string, min: number, verdict: string, session: string, pack = "generic") => ({ id, ts: T(min), command: "decide", verdict, session_id: session, pack });
+  const receipts = [d("1", 0, "weak", "work"), d("2", 1, "clear", "work"), d("3", 0, "weak", "gate"), d("4", 1, "weak", "gate"), { id: "5", ts: T(2), command: "judge", session_id: "gate", pack: "voice" }, d("6", 3, "weak", "work"), d("7", 4, "clear", "work")];
+  const stops = [{ ts: T(0), session_id: "gate", turn: "g1", edits: 1, checks: 0 }, { ts: T(0), session_id: "work", turn: "w1", edits: 1, checks: 1 }];
+  const all = measures({ receipts, stops, labels: [], since });
+  assert.deepEqual([all.reask_cleared, all.edit_turns_with_check, all.excluded_by_pack], [{ k: 2, n: 3, share: 0.667 }, { k: 1, n: 2, share: 0.5 }, 0]);
+  const clean = measures({ receipts, stops, labels: [], since, excludePacks: ["voice"] });
+  assert.deepEqual([clean.reask_cleared, clean.edit_turns_with_check, clean.excluded_by_pack], [{ k: 2, n: 2, share: 1 }, { k: 1, n: 1, share: 1 }, 1]);
+  assert.deepEqual(measures({ receipts, stops, labels: [], since, until: Date.parse(T(2)), excludePacks: ["voice"] }).reask_cleared, { k: 1, n: 1, share: 1 });
+});

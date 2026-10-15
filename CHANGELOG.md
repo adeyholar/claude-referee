@@ -16,6 +16,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Changed
 
+- `scripts/usage-report.mjs` has `--exclude-pack <name>` (leaves out every session that wrote a receipt under that pack, counted as `excluded_by_pack`) and `--until <ISO time>`. One reply-gate session wrote 265 of 268 non-clear `decide` re-asks since the briefing went live, so the old re-ask baseline did not measure coding use; the baselines are recomputed under the same rules in [usage-report.md](docs/decisions/usage-report.md).
 - The CI size tripwire for `dist/cli.mjs` moved from 400000 to 450000 bytes: the bundle was 379,415 bytes before `audit` and 400,953 after it (about 21,500 bytes, the command, its study code and its `--describe` strings). The `hook.mjs` tripwire (200000; 168,984 bytes) is unchanged and does not include the audit code. Chosen with Jev (`decide` p 0.99, both orders agree; the option costs were written by the assistant).
 - Weekly docs watch: `llms.txt` is now recorded with its sorted link paths next to the count, so a change prints the added and removed pages (a swap that keeps the count included); a snapshot that holds only the count still compares by hash until the next `--update`. Record: [docs-watch-link-paths.md](docs/decisions/docs-watch-link-paths.md).
 
