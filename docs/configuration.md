@@ -204,6 +204,6 @@ While claude-referee is enabled, its skill listing adds at most 250 tokens to ev
 
 ## Troubleshooting
 
-- **Hooks stay silent but `doctor` works in your terminal.** Claude Code probably can't find Node 20.3 or later on its own `PATH`. That happens most often when Claude Code is launched from a desktop app instead of a shell.
+- **Hooks stay silent but `doctor` works in your terminal.** Claude Code probably can't find Node 22.12 or later on its own `PATH`. That happens most often when Claude Code is launched from a desktop app instead of a shell.
 - **`doctor` finds no key, but hooks work.** The key is stored only as a plugin setting, which reaches hooks but not the shell. Add the Keychain item or `TYPESAFE_API_KEY_CMD`.
 - **`npx claude-referee` and Claude disagree.** `npx claude-referee` runs the copy published to npm, while Claude runs the copy bundled with the plugin. Run `npx claude-referee@<version>` with the plugin's version, which `/plugin` shows, to match them.

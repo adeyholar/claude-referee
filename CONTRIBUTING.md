@@ -6,7 +6,7 @@ You don't need a TypeSafe API key. Tests run offline against a local fake of the
 
 ## Setup
 
-- Node 22.18 or later for development. Tests run the TypeScript sources directly with Node's built-in type stripping. The bundle itself runs on Node 20.3 or later.
+- Node 22.18 or later for development. Tests run the TypeScript sources directly with Node's built-in type stripping. The bundle itself runs on Node 22.12 or later (the TypeSafe SDK 0.7 requires Node 22).
 - No global tools. Everything is in `devDependencies`.
 
 ```bash

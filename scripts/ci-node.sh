@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prints the path of a cached Node binary of one version, downloaded from nodejs.org and checked against its SHASUMS256.txt.
-# scripts/ci-local.sh uses it to run the CI jobs that pin Node 22 and 20.3. Usage: bash scripts/ci-node.sh 22.23.3
+# scripts/ci-local.sh uses it to run the CI jobs that pin Node 22.12 and 22.23. Usage: bash scripts/ci-node.sh 22.23.3
 set -euo pipefail
 v="$1"
 case "$(uname -s)_$(uname -m)" in

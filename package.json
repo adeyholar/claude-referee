@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=20.3"
+    "node": ">=22.12"
   },
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -17,7 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.4",
-    "@typesafe-ai/sdk": "0.6.0",
+    "@typesafe-ai/sdk": "0.7.0",
     "esbuild": "0.28.2",
     "typescript": "7.0.2"
   }

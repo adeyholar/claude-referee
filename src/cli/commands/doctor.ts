@@ -31,7 +31,7 @@ function shownBaseUrl(raw: string | undefined): string | undefined {
 
 function nodeOk(version: string): boolean {
   const [major = 0, minor = 0] = version.replace(/^v/, "").split(".").map(Number);
-  return major > 20 || (major === 20 && minor >= 3);
+  return major > 22 || (major === 22 && minor >= 12);
 }
 
 export const doctor: Command = {
@@ -42,7 +42,7 @@ export const doctor: Command = {
     outputs: {
       verdict: "ready or not_ready",
       version: "claude-referee version",
-      node: "Node version; 20.3 or later is needed",
+      node: "Node version; 22.12 or later is needed",
       claude: "Claude Code version, or null when claude is not on the PATH",
       key_source: "Where the key was found: REFEREE_BASE_URL_KEY (only for another host), plugin_setting, TYPESAFE_API_KEY, EVAL_TYPESAFE_API_KEY, TYPESAFE_API_KEY_CMD or keychain, or null. Never the key.",
       key_error: "Only when no usable key was found: the error code, e.g. no_api_key",
@@ -104,7 +104,7 @@ export const doctor: Command = {
     }
     const ready = nodeOk(node) && keySource !== null && (online === null || online === "ok");
     const nextStep = !nodeOk(node)
-      ? "Install Node 20.3 or later on the PATH Claude Code uses."
+      ? "Install Node 22.12 or later on the PATH Claude Code uses."
       : keyError === "no_api_key" && !isTypeSafeHost(io.env["TYPESAFE_BASE_URL"])
         ? "TYPESAFE_BASE_URL points away from api.typesafe.ai: set REFEREE_BASE_URL_KEY to that host's key, or unset TYPESAFE_BASE_URL. The TypeSafe key is never sent there."
         : keyError === "no_api_key"

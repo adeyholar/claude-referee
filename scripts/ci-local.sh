@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs the steps of .github/workflows/ci.yml locally, as close to CI as one machine allows: no API key, a foreign HOME, a clean bundle check.
-# Run it after committing and before pushing. Node 22, 24, 26 and 20.3 are downloaded once into ~/.cache; not covered: Linux and the hook latency timing.
+# Run it after committing and before pushing. Node 22.23.3, 24, 26 and 22.12.0 are downloaded once into ~/.cache; not covered: Linux and the hook latency timing.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 step() { printf '\n== %s\n' "$1"; }
@@ -27,14 +27,14 @@ echo 'not json' | clean_env node "$tmp/claude-referee/dist/hook.mjs" session-sta
 echo '{}' | clean_env node "$tmp/claude-referee/dist/hook.mjs" stop
 test "$(wc -c < "$tmp/claude-referee/dist/cli.mjs")" -lt 450000
 
-step "bundle on Node 20.3, as the CI bundle job (cached download, checksum verified)"
-n20="$(bash scripts/ci-node.sh 20.3.0)"; "$n20" --version
+step "bundle on Node 22.12, as the CI bundle job (cached download, checksum verified)"
+nmin="$(bash scripts/ci-node.sh 22.12.0)"; "$nmin" --version
 for c in done decide judge claims verify receipts doctor eval; do
-  clean_env "$n20" "$cli" "$c" --describe | "$n20" -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' || { echo "describe failed on Node 20.3: $c"; exit 1; }
+  clean_env "$nmin" "$cli" "$c" --describe | "$nmin" -e 'JSON.parse(require("fs").readFileSync(0, "utf8"))' || { echo "describe failed on Node 22.12: $c"; exit 1; }
 done
-echo 'not json' | clean_env "$n20" "$tmp/claude-referee/dist/hook.mjs" session-start
-echo '{}' | clean_env "$n20" "$tmp/claude-referee/dist/hook.mjs" stop
-env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD HOME=/home/runner "$n20" plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-120
+echo 'not json' | clean_env "$nmin" "$tmp/claude-referee/dist/hook.mjs" session-start
+echo '{}' | clean_env "$nmin" "$tmp/claude-referee/dist/hook.mjs" stop
+env -u TYPESAFE_API_KEY -u EVAL_TYPESAFE_API_KEY -u TYPESAFE_API_KEY_CMD HOME=/home/runner "$nmin" plugins/claude-referee/dist/cli.mjs eval score --suite all --fail-on violated | cut -c1-120
 test "$(wc -c < "$tmp/claude-referee/dist/hook.mjs")" -lt 200000
 
 step "recorded evals score offline with CI's HOME"

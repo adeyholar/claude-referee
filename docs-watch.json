@@ -1,22 +1,23 @@
 {
   "models.md": {
-    "sha256": "15351adaab85874b5f1a942fc2fdf3c7b3ecadcc936d580793d734855a0038f3",
+    "sha256": "02b7682a7176d2d6649a2fa4588df45cbbaa3c3460f721828d632a7577e606df",
     "facts": {
-      "rate_limits": "| Rate limits | 100K tokens per second / 80 requests per second |",
+      "rate_limits": "",
       "models": [
         "jev-1.13",
-        "jev-1.13.0"
+        "jev-1.13.0",
+        "jev-1.14.0"
       ]
     }
   },
   "api.md": {
-    "sha256": "6b760275f89341fe15cff80c28aacae94d7d0c0c99afcd987ec0bca680b5713a",
+    "sha256": "37f0f3a41917e17592876f67848bd63329ba576081a89704f28210f0efc3c0f6",
     "facts": {}
   },
   "llms.txt": {
-    "sha256": "4acbbf437e9f58674240fb12859a7befa8bac5866bb221398f08382c0abc8b4d",
+    "sha256": "99f746d2570aa97898ad0e62042b9b5b703e54c3f1142ce4cf4b7ff15b5782ae",
     "facts": {
-      "links": 113,
+      "links": 128,
       "paths": [
         "agent-skill.md",
         "api.md",
@@ -48,6 +49,7 @@
         "cookbooks/twitch_chat_filter.md",
         "demos.md",
         "demos/smart-home.md",
+        "images.md",
         "introduction.md",
         "introduction/coding-agents.md",
         "introduction/machine-learning-primer.md",
@@ -62,6 +64,7 @@
         "patterns/intent-routing.md",
         "primitives.md",
         "primitives/advanced.md",
+        "primitives/box.md",
         "primitives/choice.md",
         "primitives/noul.md",
         "primitives/score.md",
@@ -75,6 +78,7 @@
         "sdk/javascript/api/classes/APIUserAbortError.md",
         "sdk/javascript/api/classes/AuthenticationError.md",
         "sdk/javascript/api/classes/BadRequestError.md",
+        "sdk/javascript/api/classes/Image.md",
         "sdk/javascript/api/classes/InternalServerError.md",
         "sdk/javascript/api/classes/NotFoundError.md",
         "sdk/javascript/api/classes/PermissionDeniedError.md",
@@ -82,9 +86,12 @@
         "sdk/javascript/api/classes/TypeSafeClient.md",
         "sdk/javascript/api/classes/TypeSafeError.md",
         "sdk/javascript/api/classes/UnprocessableEntityError.md",
+        "sdk/javascript/api/functions/box.md",
         "sdk/javascript/api/functions/choice.md",
-        "sdk/javascript/api/functions/noul.md",
-        "sdk/javascript/api/functions/score.md",
+        "sdk/javascript/api/functions/image.md",
+        "sdk/javascript/api/interfaces/BoxCoordinates.md",
+        "sdk/javascript/api/interfaces/BoxQuestion.md",
+        "sdk/javascript/api/interfaces/BoxResponse.md",
         "sdk/javascript/api/interfaces/ChoiceQuestion.md",
         "sdk/javascript/api/interfaces/ChoiceResponse.md",
         "sdk/javascript/api/interfaces/Logger.md",
@@ -98,12 +105,15 @@
         "sdk/javascript/api/interfaces/ScoreQuestion.md",
         "sdk/javascript/api/interfaces/ScoreResponse.md",
         "sdk/javascript/api/interfaces/SystemOneRequest.md",
-        "sdk/javascript/api/interfaces/SystemOneRequestPayload.md",
         "sdk/javascript/api/interfaces/SystemOneResult.md",
+        "sdk/javascript/api/interfaces/TextWithAssets.md",
         "sdk/javascript/api/interfaces/TypeSafeClientConfig.md",
         "sdk/javascript/api/interfaces/Usage.md",
         "sdk/javascript/api/interfaces/WithResponse.md",
+        "sdk/javascript/api/type-aliases/Asset.md",
         "sdk/javascript/api/type-aliases/ChoiceCriteria.md",
+        "sdk/javascript/api/type-aliases/Compression.md",
+        "sdk/javascript/api/type-aliases/ContentValue.md",
         "sdk/javascript/api/type-aliases/Description.md",
         "sdk/javascript/api/type-aliases/EntryType.md",
         "sdk/javascript/api/type-aliases/EnvVar.md",
@@ -115,9 +125,13 @@
         "sdk/javascript/api/type-aliases/ScoreCriteria.md",
         "sdk/javascript/api/type-aliases/ScoreLegend.md",
         "sdk/javascript/api/type-aliases/ScoreOf.md",
+        "sdk/javascript/api/type-aliases/SentContent.md",
         "sdk/javascript/api/variables/ENV.md",
         "sdk/javascript/api/variables/LOG_LEVELS.md",
         "sdk/javascript/api/variables/VERSION.md",
+        "sdk/javascript/api/variables/noul.md",
+        "sdk/javascript/api/variables/score.md",
+        "sdk/javascript/api/variables/withAssets.md",
         "sdk/javascript/changelog.md",
         "sdk/python.md",
         "sdk/python/api.md",
@@ -126,28 +140,30 @@
         "sdk/python/api/constants.md",
         "sdk/python/api/exceptions.md",
         "sdk/python/api/retries.md",
+        "sdk/python/api/types/assets.md",
         "sdk/python/api/types/common.md",
         "sdk/python/api/types/questions.md",
         "sdk/python/api/types/responses.md",
         "sdk/python/changelog.md",
-        "sdk/python/usage.md"
+        "sdk/python/usage/advanced.md",
+        "sdk/python/usage/basic.md"
       ]
     }
   },
   "model-jaggedness/jev-1.13.md": {
-    "sha256": "5d471be7c8d2a359a81979b7bcf2c2fab536a198d4e50155c4233380d5c03986",
+    "sha256": "ae4e822c759ce6665553a676c7bfa9371374e02685b4dacb1851a330875e5950",
     "facts": {
       "reviewed": "2026-10-02"
     }
   },
   "info": {
     "python": {
-      "version": "0.7.3",
-      "date": "2026-10-09"
+      "version": "0.7.5",
+      "date": "2026-10-14"
     },
     "javascript": {
-      "version": "0.6.0",
-      "date": "2026-09-15"
+      "version": "0.7.0",
+      "date": "2026-10-14"
     }
   }
 }

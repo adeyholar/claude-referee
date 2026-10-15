@@ -47,7 +47,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "20.3"
+          node-version: "22.12.0"
       - name: Bundle runs without node_modules on the oldest supported Node
         run: |
           tmp="$(mktemp -d)"

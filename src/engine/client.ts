@@ -1,6 +1,7 @@
 // The only module that talks to TypeSafe. The SDK is imported lazily, so commands that never ask Jev never load it.
 // Each call gets a total budget on top of the SDK's per-attempt timeout, because the SDK has no retry budget.
 // 429s are retried here, not by the SDK: a Retry-After longer than the budget ends the call as rate_limited.
+// Request bodies go uncompressed: SDK 0.7 compresses with zstd by default, and a gateway behind TYPESAFE_BASE_URL may not accept it.
 
 import { setTimeout as sleep } from "node:timers/promises";
 import type { ChoiceResponse, EntryType, NoulResponse, Questions, ScoreResponse, TypeSafeClient } from "@typesafe-ai/sdk";
@@ -56,6 +57,7 @@ async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, sig
       logLevel: "warn",
       logger: stderrLogger,
       timeout: options.budget.perAttemptMs,
+      compression: false,
       retry: { maxRetries: options.budget.maxRetries, httpStatuses: SDK_RETRY_STATUSES },
       ...(options.baseURL ? { baseURL: options.baseURL } : {}),
     });
@@ -80,11 +82,11 @@ async function guarded<T>(options: CallOptions, fn: (client: TypeSafeClient, sig
 
 export function callJev(call: JevCall, options: CallOptions): Promise<JevReply> {
   return guarded(options, async (client, signal) => {
-    const { data, requestId } = await client.systemOne({ state: call.state, questions: call.questions, model: call.model }, { signal }).withResponse();
+    const { data, requestId } = await client.systemOne({ state: call.state as NonNullable<EntryType>, questions: call.questions, model: call.model }, { signal }).withResponse();
     return {
       answers: data.answers as Readonly<Record<string, Answer>>,
       model: data.model,
-      inputTokens: data.usage.input_tokens,
+      inputTokens: data.usage.input_tokens ?? 0,
       requestId,
     };
   }, call.model);

@@ -150,7 +150,8 @@ export function planDecide(pack: Pack, thresholds: Thresholds | undefined, state
     if (perOption) {
       for (const o of options) {
         const answer = byId.get(`fit:${o.name}`)?.["fit"];
-        const levels = Array.isArray(fit.criteria) ? fit.criteria.length : 5;
+        const criteria = (fit as { criteria?: unknown }).criteria;
+        const levels = Array.isArray(criteria) ? criteria.length : 5;
         mean[o.name] = answer?.type === "score" ? answer.score / Math.max(levels - 1, 1) : 0;
       }
     } else {

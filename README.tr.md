@@ -170,7 +170,7 @@ npx claude-referee receipts --tokens
 
 ## Kurulum
 
-Gerekenler: Claude Code 2.1.139 ya da sonrası (2.1.295 ile test edildi), Claude Code'un gördüğü `PATH` üzerinde Node 20.3 ya da sonrası ve bir [TypeSafe API anahtarı](https://docs.typesafe.ai).
+Gerekenler: Claude Code 2.1.139 ya da sonrası (2.1.295 ile test edildi), Claude Code'un gördüğü `PATH` üzerinde Node 22.12 ya da sonrası ve bir [TypeSafe API anahtarı](https://docs.typesafe.ai).
 
 **1. Eklentiyi kur**
 

@@ -9,6 +9,7 @@ export const DEFAULT_BASE_URL = "https://api.typesafe.ai";
 
 export const USD_PER_MTOK: Readonly<Record<string, number>> = {
   "jev-1.13.0": 0.042,
+  "jev-1.14.0": 0.042,
 };
 
 export const DETAIL_LIMIT = 1500;
